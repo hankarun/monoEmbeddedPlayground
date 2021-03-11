@@ -5,9 +5,9 @@ using Simengine;
 
 public class SampleScript : MonoSystem
 {
-	public int counter = 100;
+	public int counter = 5;
 	public string componentName = "transform2";
-	private int v = 10;
+	private int v = 7;
 	
 	private void PrintAppData()
 	{

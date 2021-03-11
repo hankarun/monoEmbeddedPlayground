@@ -274,38 +274,19 @@ ScriptInstance Load(const std::string& file_path)
     return script;
 }
 
-void output_JSON(ScriptInstance script) 
-{
-    
+std::string serializeScriptInstance(ScriptInstance script) 
+{    
     const char* name = mono_class_get_name(script.klass);
-    const char* json = "{\"script\":\"\",\"counter\":0,\"componentName\":\"\",\"v\":0}";
-
     using namespace rapidjson;
 
-    Document document;
-    document.Parse(json);
+    StringBuffer sb;
+    PrettyWriter<StringBuffer> writer(sb);
 
-    document["script"].Set(name);
+    writer.StartObject();
+    writer.Key("script");
+    writer.String(name);
 
-    MonoClassField* counter_field = mono_class_get_field_from_name(script.klass, "counter");
-    int counter_value = 0;
-    mono_field_get_value(script.object, counter_field, &counter_value);
-    document["counter"].Set(counter_value);
-
-    MonoClassField* component_name_field = mono_class_get_field_from_name(script.klass, "componentName");
-    MonoString* strval;
-    mono_field_get_value(script.object, component_name_field, &strval);
-    char* p = mono_string_to_utf8(strval);
-    const char* componentName = p;
-    document["componentName"].Set(componentName);
-
-    MonoClassField* v_field = mono_class_get_field_from_name(script.klass, "v");
-    int v_value = 0;
-    mono_field_get_value(script.object, v_field, &v_value);
-    document["v"].Set(v_value);
-
-
-/*    MonoClassField* field;
+    MonoClassField* field;
     void* iter = NULL;
     while ((field = mono_class_get_fields(script.klass, &iter)))
     {
@@ -313,7 +294,8 @@ void output_JSON(ScriptInstance script)
         {
             int value = 0;
             mono_field_get_value(script.object, field, &value);
-            document[mono_field_get_name(field)].SetInt(value);
+            writer.Key(mono_field_get_name(field));
+            writer.Int(value);
         }
 
         if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_STRING)
@@ -321,24 +303,30 @@ void output_JSON(ScriptInstance script)
             MonoString* strval;
             mono_field_get_value(script.object, field, &strval);
             char* p = mono_string_to_utf8(strval);
-            printf(" Value of str is: %s\n", p);
-            document[mono_field_get_name(field)] = (*p);
+            int size = mono_string_length(strval);
+            writer.Key(mono_field_get_name(field));
+            writer.String(p);
             mono_free(p);
         }
-    }*/
+    }
+    writer.EndObject();
 
-    StringBuffer sb;
-    PrettyWriter<StringBuffer> writer(sb);
-    document.Accept(writer);
-    puts(sb.GetString()); 
+    return sb.GetString();
 }
 
 int main()
 {
     Initialize();
+    // Eğer daha önceden derlendiyse bir daha framework derlenmesin
     CompileApiAssembly();
+
     OpenCompiledAssambly();
-    output_JSON(Load("scripts/SampleScript.cs"));
+
+    std::string serializedComponent = serializeScriptInstance(Load("scripts/SampleScript.cs"));
+    printf("%s", serializedComponent.c_str());
+
+    // Burada serializedComponent tekrar objeye dönsün
+
     //mono_runtime_invoke(script.method_start, script.object, nullptr, nullptr);
     //mono_runtime_invoke(script.method_update, script.object, nullptr, nullptr);
     //std::cout << "Hello World!\n";

@@ -314,18 +314,93 @@ std::string serializeScriptInstance(ScriptInstance script)
     return sb.GetString();
 }
 
+/*
+template <typename T> std::string stringify(T x) {
+    std::stringstream ss;
+    ss << x;
+    return ss.str();
+}
+
+ScriptInstance deserializeToScript(std::string serializedComponent, ScriptInstance script)
+{
+    using namespace rapidjson;
+    using namespace std;
+
+
+    struct Handler {
+
+        std::string type;
+        std::string data;
+
+        Handler() : type(), data() {}
+
+        bool Null() { type = "Null"; data.clear(); return true; }
+        bool Bool(bool b) { type = "Bool:"; data = b ? "true" : "false"; return true; }
+        bool Int(int i) { type = "Int:"; data = stringify(i); return true; }
+        bool Uint(unsigned u) { type = "Uint:"; data = stringify(u); return true; }
+        bool Int64(int64_t i) { type = "Int64:"; data = stringify(i); return true; }
+        bool Uint64(uint64_t u) { type = "Uint64:"; data = stringify(u); return true; }
+        bool Double(double d) { type = "Double:"; data = stringify(d); return true; }
+        bool RawNumber(const char* str, SizeType length, bool) { type = "Number:"; data = std::string(str, length); return true; }
+        bool String(const char* str, SizeType length, bool) { type = "String:"; data = std::string(str, length); return true; }
+        bool StartObject() { type = "StartObject"; data.clear(); return true; }
+        bool Key(const char* str, SizeType length, bool) { type = "Key:"; data = std::string(str, length); return true; }
+        bool EndObject(SizeType memberCount) { type = "EndObject:"; data = stringify(memberCount); return true; }
+        bool StartArray() { type = "StartArray"; data.clear(); return true; }
+        bool EndArray(SizeType elementCount) { type = "EndArray:"; data = stringify(elementCount); return true; }
+    private:
+        Handler(const Handler& noCopyConstruction);
+        Handler& operator=(const Handler& noAssignment);
+    };
+
+    Handler handler;
+    Reader reader;
+    char* serializedData = const_cast<char*>(serializedComponent.c_str());
+    rapidjson::StringStream ss(serializedData);
+    reader.IterativeParseInit();
+    char* keyValue;
+
+    while (!reader.IterativeParseComplete()) {
+        reader.IterativeParseNext<kParseDefaultFlags>(ss, handler);
+        if (handler.type == "StartObject" || handler.type == "EndObject:")
+        {
+            continue;
+        }
+        else if (handler.type == "Key:")
+        {
+            keyValue = const_cast<char*>(handler.data.c_str());
+            continue;
+        }
+        else
+        {
+            script.SetValue(keyValue, handler.data);
+        }
+    }
+
+    return script;
+}
+*/
+
 int main()
 {
     Initialize();
+
     // Eğer daha önceden derlendiyse bir daha framework derlenmesin
-    CompileApiAssembly();
+    if (!(mono_domain_assembly_open(m_domain, "temp/Engine.dll")))
+    {
+         printf("compiling assembly...\n");
+-        CompileApiAssembly();
+    }
 
     OpenCompiledAssambly();
 
     std::string serializedComponent = serializeScriptInstance(Load("scripts/SampleScript.cs"));
-    printf("%s", serializedComponent.c_str());
+    printf("%s\n", serializedComponent.c_str());
 
     // Burada serializedComponent tekrar objeye dönsün
+    
+    //ScriptInstance script = (Load("scripts/DeserializingSampleScript.cs")); 
+    //ScriptInstance deserializedScript = deserializeToScript(serializedComponent, script);
 
     //mono_runtime_invoke(script.method_start, script.object, nullptr, nullptr);
     //mono_runtime_invoke(script.method_update, script.object, nullptr, nullptr);

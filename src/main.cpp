@@ -192,6 +192,91 @@ void output_properties(MonoClass* klass) {
     }
 }
 
+
+ScriptInstance Load(const std::string& file_path)
+{
+    ScriptInstance script;
+    std::filesystem::path p(file_path);
+    const std::string class_name = p.stem().string();
+
+    script.assembly = compile_and_load_assembly(m_domain, { file_path });
+    if (!script.assembly)
+    {
+        printf("Failed to load assembly");
+        return script;
+    }
+
+    // Get image from script assembly
+    script.image = mono_assembly_get_image(script.assembly);
+    if (!script.image)
+    {
+        printf("Failed to get image");
+        return script;
+    }
+
+    //auto classes = GetAssemblyClassList(script.image);
+    //printf("Class count %d\n", classes.size());
+
+    // Get the class
+    script.klass = mono_class_from_name(script.image, "", class_name.c_str());
+    if (!script.klass)
+    {
+        mono_image_close(script.image);
+        printf("Failed to get class");
+        return script;
+    }
+
+
+    // Create class instance
+    script.object = mono_object_new(m_domain, script.klass);
+    if (!script.object)
+    {
+        mono_image_close(script.image);
+        printf("Failed to create class instance");
+        return script;
+    }
+
+
+    // Get methods
+    if (!(mono_class_num_methods(script.klass)))
+    {
+        script.method_start = get_method(script.image, class_name + ":Start()");
+        script.method_update = get_method(script.image, class_name + ":Update()");
+    }
+
+    // Set entity handle
+    //if (!script.SetValue(script_component->GetEntity(), "_internal_entity_handle"))
+    //{
+    //    mono_image_close(script.image);
+    //    LOG_ERROR("Failed to set entity handle");
+    //    return SCRIPT_NOT_LOADED;
+    //}
+
+    //// Set transform handle
+    //if (!script.SetValue(script_component->GetTransform(), "_internal_transform_handle"))
+    //{
+    //    mono_image_close(script.image);
+    //    LOG_ERROR("Failed to set transform handle");
+    //    return SCRIPT_NOT_LOADED;
+    //}
+
+    // Call the default constructor
+    mono_runtime_object_init(script.object);
+    if (!script.object)
+    {
+        mono_image_close(script.image);
+        printf("Failed to run class constructor");
+        return script;
+    }
+
+    //output_methods(script.klass);
+    //output_properties(script.klass);
+    //output_fields(script.klass, script.object);
+
+    // Return script id
+    return script;
+}
+
 template <typename T> std::string stringify(T x) {
     std::stringstream ss;
     ss << x;
@@ -257,14 +342,14 @@ ScriptInstance Create(const std::string& file_path, std::string serializedCompon
         }
         else
         {
+            if (key == "script") { continue; }
+
             if (handler.type == "string ")
-            {   
-                if (key == "script") { continue; }
+            {
                 ScriptFile << "public " + handler.type + key + " = " + "\"" + handler.data + "\"" + ";" << endl;
             }
             else
             {
-                if (key == "script") { continue; }
                 ScriptFile << "public " + handler.type + key + " = " + handler.data + ";" << endl;
             }
         }
@@ -273,133 +358,12 @@ ScriptInstance Create(const std::string& file_path, std::string serializedCompon
     ScriptFile << "}" << endl;
     ScriptFile.close();
 
-    ScriptInstance script;
-    script.assembly = compile_and_load_assembly(m_domain, { file_path });
-    if (!script.assembly)
-    {
-        printf("Failed to load assembly");
-        return script;
-    }
-
-    // Get image from script assembly
-    script.image = mono_assembly_get_image(script.assembly);
-    if (!script.image)
-    {
-        printf("Failed to get image");
-        return script;
-    }
-
-    // Get the class
-    script.klass = mono_class_from_name(script.image, "", class_name.c_str());
-    if (!script.klass)
-    {
-        mono_image_close(script.image);
-        printf("Failed to get class");
-        return script;
-    }
-
-    // Create class instance
-    script.object = mono_object_new(m_domain, script.klass);
-    if (!script.object)
-    {
-        mono_image_close(script.image);
-        printf("Failed to create class instance");
-        return script;
-    }
-
-    mono_runtime_object_init(script.object);
-    if (!script.object)
-    {
-        mono_image_close(script.image);
-        printf("Failed to run class constructor");
-        return script;
-    }
+    ScriptInstance script = Load(file_path);
     return script;
 }
 
-ScriptInstance Load(const std::string& file_path)
+std::string serializeScriptInstance(ScriptInstance script)
 {
-    ScriptInstance script;
-    std::filesystem::path p(file_path);
-    const std::string class_name = p.stem().string();
-
-    script.assembly = compile_and_load_assembly(m_domain, { file_path });
-    if (!script.assembly)
-    {
-        printf("Failed to load assembly");
-        return script;
-    }
-
-    // Get image from script assembly
-    script.image = mono_assembly_get_image(script.assembly);
-    if (!script.image)
-    {
-        printf("Failed to get image");
-        return script;
-    }
-
-    //auto classes = GetAssemblyClassList(script.image);
-    //printf("Class count %d\n", classes.size());
-
-    // Get the class
-    script.klass = mono_class_from_name(script.image, "", class_name.c_str());
-    if (!script.klass)
-    {
-        mono_image_close(script.image);
-        printf("Failed to get class");
-        return script;
-    }
-
-
-    // Create class instance
-    script.object = mono_object_new(m_domain, script.klass);
-    if (!script.object)
-    {
-        mono_image_close(script.image);
-        printf("Failed to create class instance");
-        return script;
-    }
-
-
-    // Get methods
-    script.method_start = get_method(script.image, class_name + ":Start()");
-    script.method_update = get_method(script.image, class_name + ":Update()");
-
-    // Set entity handle
-    //if (!script.SetValue(script_component->GetEntity(), "_internal_entity_handle"))
-    //{
-    //    mono_image_close(script.image);
-    //    LOG_ERROR("Failed to set entity handle");
-    //    return SCRIPT_NOT_LOADED;
-    //}
-
-    //// Set transform handle
-    //if (!script.SetValue(script_component->GetTransform(), "_internal_transform_handle"))
-    //{
-    //    mono_image_close(script.image);
-    //    LOG_ERROR("Failed to set transform handle");
-    //    return SCRIPT_NOT_LOADED;
-    //}
-
-    // Call the default constructor
-    mono_runtime_object_init(script.object);
-    if (!script.object)
-    {
-        mono_image_close(script.image);
-        printf("Failed to run class constructor");
-        return script;
-    }
-
-    //output_methods(script.klass);
-    //output_properties(script.klass);
-    //output_fields(script.klass, script.object);
-
-    // Return script id
-    return script;
-}
-
-std::string serializeScriptInstance(ScriptInstance script) 
-{    
     const char* name = mono_class_get_name(script.klass);
     using namespace rapidjson;
 
@@ -446,8 +410,8 @@ int main()
     // Eğer daha önceden derlendiyse bir daha framework derlenmesin
     if (!(mono_domain_assembly_open(m_domain, "temp/Engine.dll")))
     {
-         printf("compiling assembly...\n");
--        CompileApiAssembly();
+        printf("compiling assembly...\n");
+        CompileApiAssembly();
     }
 
     OpenCompiledAssambly();
@@ -465,5 +429,4 @@ int main()
     //mono_runtime_invoke(script.method_start, script.object, nullptr, nullptr);
     //mono_runtime_invoke(script.method_update, script.object, nullptr, nullptr);
     //std::cout << "Hello World!\n";
-
 }

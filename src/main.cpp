@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 #include "ScriptHelper.h"
 #include "Application.h"
 #include "ScriptApi.h"
@@ -75,7 +76,7 @@ bool Initialize()
     return true;
 }
 
-bool OpenCompiledAssambly()
+bool OpenCompiledAssembly()
 {
     MonoAssembly* api_assembly = mono_domain_assembly_open(m_domain, "temp/Engine.dll");
     if (!api_assembly)
@@ -98,14 +99,14 @@ bool OpenCompiledAssambly()
     return true;
 }
 
-bool CompileApiAssembly()
+bool CompileApiAssembly(std::vector<std::string> api_cs)
 {
-    // Get callbacks assembly
-    std::vector<std::string> api_cs = {
-        "scripts/Engine.cs",
-        "scripts/Time.cs",
-        "scripts/Debug.cs"
-    };
+    //// Get callbacks assembly
+    //std::vector<std::string> api_cs = {
+    //    "scripts/Engine.cs",
+    //    "scripts/Time.cs",
+    //    "scripts/Debug.cs"
+    //};
 
     MonoAssembly* api_assembly = compile_and_load_assembly(m_domain, api_cs, false);
     if (!api_assembly)
@@ -283,84 +284,83 @@ template <typename T> std::string stringify(T x) {
     return ss.str();
 }
 
-ScriptInstance Create(const std::string& file_path, std::string serializedComponent)
-{
-    using namespace rapidjson;
-    using namespace std;
-
-    struct Handler {
-        std::string type;
-        std::string data;
-
-        Handler() : type(), data() {}
-        bool Null() { type = "null"; data.clear(); return true; }
-        bool Bool(bool b) { type = "bool "; data = b ? "true" : "false"; return true; }
-        bool Int(int i) { type = "int "; data = stringify(i); return true; }
-        bool Uint(unsigned u) { type = "int "; data = stringify(u); return true; }
-        bool Int64(int64_t i) { type = "int64 "; data = stringify(i); return true; }
-        bool Uint64(uint64_t u) { type = "ulong "; data = stringify(u); return true; }
-        bool Double(double d) { type = "double "; data = stringify(d); return true; }
-        bool RawNumber(const char* str, SizeType length, bool) { type = "int "; data = std::string(str, length); return true; }
-        bool String(const char* str, SizeType length, bool) { type = "string "; data = std::string(str, length); return true; }
-        bool StartObject() { type = "StartObject"; data.clear(); return true; }
-        bool Key(const char* str, SizeType length, bool) { type = "Key:"; data = std::string(str, length); return true; }
-        bool EndObject(SizeType memberCount) { type = "EndObject:"; data = stringify(memberCount); return true; }
-        bool StartArray() { type = "StartArray"; data.clear(); return true; }
-        bool EndArray(SizeType elementCount) { type = "EndArray:"; data = stringify(elementCount); return true; }
-    private:
-        Handler(const Handler& noCopyConstruction);
-        Handler& operator=(const Handler& noAssignment);
-    };
-
-    Handler handler;
-    Reader reader;
-
-    char* serializedData = const_cast<char*>(serializedComponent.c_str());
-    rapidjson::StringStream ss(serializedData);
-    std::filesystem::path p(file_path);
-    const std::string class_name = p.stem().string();
-
-    fstream ScriptFile;
-    ScriptFile.open(file_path, ios::out);
-    ScriptFile << "using System;\nusing System.Runtime.CompilerServices;\nusing System.Runtime.InteropServices;\nusing Simengine;\n\n";
-    ScriptFile << "public class " + class_name + " : MonoSystem\n{\n";
-
-    string key = "";
-
-    reader.IterativeParseInit();
-    while (!reader.IterativeParseComplete()) {
-        // örnek cikti: StartObject\n Key:script\n string SampleScript
-        reader.IterativeParseNext<kParseDefaultFlags>(ss, handler);
-        if (handler.type == "StartObject" || handler.type == "EndObject:")
-        {
-            continue;
-        }
-        else if (handler.type == "Key:")
-        {
-            key = handler.data.c_str();
-            continue;
-        }
-        else
-        {
-            if (key == "script") { continue; }
-
-            if (handler.type == "string ")
-            {
-                ScriptFile << "public " + handler.type + key + " = " + "\"" + handler.data + "\"" + ";" << endl;
-            }
-            else
-            {
-                ScriptFile << "public " + handler.type + key + " = " + handler.data + ";" << endl;
-            }
-        }
-    }
-
-    ScriptFile << "}" << endl;
-    ScriptFile.close();
-
-    ScriptInstance script = Load(file_path);
-    return script;
-}
+//ScriptInstance Create(const std::string& file_path, std::string serializedComponent)
+//{
+//    using namespace rapidjson;
+//    using namespace std;
+//
+//    struct Handler {
+//        std::string type;
+//        std::string data;
+//
+//        Handler() : type(), data() {}
+//        bool Null() { type = "null"; data.clear(); return true; }
+//        bool Bool(bool b) { type = "bool "; data = b ? "true" : "false"; return true; }
+//        bool Int(int i) { type = "int "; data = stringify(i); return true; }
+//        bool Uint(unsigned u) { type = "int "; data = stringify(u); return true; }
+//        bool Int64(int64_t i) { type = "int64 "; data = stringify(i); return true; }
+//        bool Uint64(uint64_t u) { type = "ulong "; data = stringify(u); return true; }
+//        bool Double(double d) { type = "double "; data = stringify(d); return true; }
+//        bool RawNumber(const char* str, SizeType length, bool) { type = "int "; data = std::string(str, length); return true; }
+//        bool String(const char* str, SizeType length, bool) { type = "string "; data = std::string(str, length); return true; }
+//        bool StartObject() { type = "StartObject"; data.clear(); return true; }
+//        bool Key(const char* str, SizeType length, bool) { type = "Key:"; data = std::string(str, length); return true; }
+//        bool EndObject(SizeType memberCount) { type = "EndObject:"; data = stringify(memberCount); return true; }
+//        bool StartArray() { type = "StartArray"; data.clear(); return true; }
+//        bool EndArray(SizeType elementCount) { type = "EndArray:"; data = stringify(elementCount); return true; }
+//    private:
+//        Handler(const Handler& noCopyConstruction);
+//        Handler& operator=(const Handler& noAssignment);
+//    };
+//
+//    Handler handler;
+//    Reader reader;
+//
+//    char* serializedData = const_cast<char*>(serializedComponent.c_str());
+//    rapidjson::StringStream ss(serializedData);
+//    std::filesystem::path p(file_path);
+//    const std::string class_name = p.stem().string();
+//
+//    fstream ScriptFile;
+//    ScriptFile.open(file_path, ios::out);
+//    ScriptFile << "using System;\nusing System.Runtime.CompilerServices;\nusing System.Runtime.InteropServices;\nusing Simengine;\n\n";
+//    ScriptFile << "public class " + class_name + " : MonoSystem\n{\n";
+//
+//    string key = "";
+//
+//    reader.IterativeParseInit();
+//    while (!reader.IterativeParseComplete()) {
+//        reader.IterativeParseNext<kParseDefaultFlags>(ss, handler);
+//        if (handler.type == "StartObject" || handler.type == "EndObject:")
+//        {
+//            continue;
+//        }
+//        else if (handler.type == "Key:")
+//        {
+//            key = handler.data.c_str();
+//            continue;
+//        }
+//        else
+//        {
+//            if (key == "script") { continue; }
+//
+//            if (handler.type == "string ")
+//            {
+//                ScriptFile << "public " + handler.type + key + " = " + "\"" + handler.data + "\"" + ";" << endl;
+//            }
+//            else
+//            {
+//                ScriptFile << "public " + handler.type + key + " = " + handler.data + ";" << endl;
+//            }
+//        }
+//    }
+//
+//    ScriptFile << "}" << endl;
+//    ScriptFile.close();
+//
+//    ScriptInstance script = Load(file_path);
+//    return script;
+//}
 
 std::string serializeScriptInstance(ScriptInstance script)
 {
@@ -410,23 +410,45 @@ int main()
     // Eğer daha önceden derlendiyse bir daha framework derlenmesin
     if (!(mono_domain_assembly_open(m_domain, "temp/Engine.dll")))
     {
+        // Alınan dizin içerisindeki tüm cs dosyalarının bulunup framework dll'inin oluşturulması
+        std::string scripts_path;
+        printf("path to c# scripts: ");
+        std::cin >> scripts_path;
+        std::vector<std::string> api_cs_path;
+
+        for (auto& p : std::filesystem::directory_iterator(scripts_path))
+        {
+            // ScriptHelper'da framework vektörün ilk elemanının ismi ile oluşturulduğundan dolayı
+            if (p.path() == "scripts\\Engine.cs")
+                api_cs_path.insert(api_cs_path.begin(), p.path().u8string());
+            else
+                api_cs_path.insert(api_cs_path.end(), p.path().u8string());
+        }
+
         printf("compiling assembly...\n");
-        CompileApiAssembly();
+        CompileApiAssembly(api_cs_path);
     }
 
-    OpenCompiledAssambly();
+    OpenCompiledAssembly();
 
-    std::string serializedComponent = serializeScriptInstance(Load("scripts/SampleScript.cs"));
-    printf("%s\n", serializedComponent.c_str());
+    // Engine dll'i kullanılarak kullanıcı scriptlerinin dll dosyalarının oluşturulması
+    std::string user_scripts_path;
+    printf("path to user c# scripts: ");
+    std::cin >> user_scripts_path;
+    std::vector<std::string> user_cs_path;
 
-    // Burada serializedComponent tekrar objeye dönsün
-    ScriptInstance newScript = Create("scripts/NewScript.cs", serializedComponent);
+    for (auto& p : std::filesystem::directory_iterator(user_scripts_path))
+    {
+        ScriptInstance script = Load(p.path().u8string());
+    }
 
-    std::string newScriptSerialized = serializeScriptInstance(newScript);
-    printf("%s\n", newScriptSerialized.c_str());
-    output_fields(newScript.klass, newScript.object);
+
+    //std::string serializedComponent = serializeScriptInstance(Load("scripts/SampleScript.cs"));
+    //printf("%s\n", serializedComponent.c_str());
+
+    //// Burada serializedComponent tekrar objeye dönsün
+    //ScriptInstance newScript = Create("scripts/NewScript.cs", serializedComponent);
 
     //mono_runtime_invoke(script.method_start, script.object, nullptr, nullptr);
     //mono_runtime_invoke(script.method_update, script.object, nullptr, nullptr);
-    //std::cout << "Hello World!\n";
 }

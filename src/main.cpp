@@ -278,11 +278,11 @@ ScriptInstance Load(const std::string& file_path)
     return script;
 }
 
-template <typename T> std::string stringify(T x) {
-    std::stringstream ss;
-    ss << x;
-    return ss.str();
-}
+//template <typename T> std::string stringify(T x) {
+//    std::stringstream ss;
+//    ss << x;
+//    return ss.str();
+//}
 
 //ScriptInstance Create(const std::string& file_path, std::string serializedComponent)
 //{
@@ -402,6 +402,84 @@ std::string serializeScriptInstance(ScriptInstance script)
     return sb.GetString();
 }
 
+void CompileAssembly()
+{
+    // Alınan dizin içerisindeki tüm cs dosyalarının bulunup framework dll'inin oluşturulması
+    std::string scripts_path;
+    printf("path to c# scripts: ");
+    std::cin >> scripts_path;
+    std::vector<std::string> api_cs_path;
+
+    for (auto& p : std::filesystem::directory_iterator(scripts_path))
+    {
+        // ScriptHelper'da framework vektörün ilk elemanının ismi ile oluşturulduğundan dolayı
+        if (p.path() == "scripts\\Engine.cs")
+            api_cs_path.insert(api_cs_path.begin(), p.path().u8string());
+        else
+            api_cs_path.insert(api_cs_path.end(), p.path().u8string());
+    }
+
+    printf("compiling assembly...\n");
+    CompileApiAssembly(api_cs_path);
+}
+
+void CompileUserScripts()
+{
+    // Engine dll'i kullanılarak kullanıcı scriptlerinin dll dosyalarını oluştur
+    std::string user_scripts_path;
+    printf("path to user c# scripts: ");
+    std::cin >> user_scripts_path;
+    std::vector<std::string> user_cs_path;
+
+    int dllSwitch;
+    printf("Type 0 for compiling all scripts in one dll file \nType 1 for seperate dll for each script\n");
+    std::cin >> dllSwitch;
+    switch (dllSwitch)
+    {
+    case 0:
+        // Tüm kullanıcı scriptlerini tek bir dll'de birleştir
+        for (auto& p : std::filesystem::directory_iterator(user_scripts_path))
+        {
+            user_cs_path.insert(user_cs_path.end(), p.path().u8string());
+        }
+        compile_script(user_cs_path, "temp/Engine.dll");
+        break;
+
+    case 1:
+        // Her bir kullanıcı scripti için ayrı bir dll oluştur
+        for (auto& p : std::filesystem::directory_iterator(user_scripts_path))
+        {
+            user_cs_path.insert(user_cs_path.end(), p.path().u8string());
+            compile_script(user_cs_path, "temp/Engine.dll");
+            user_cs_path.clear();
+        }
+        break;
+    }
+}
+
+void LoadDLLs() 
+{
+    // Derlenen dll'leri yükle çalıştır
+    std::string dll_path;
+    printf("path to dlls: ");
+    std::cin >> dll_path;
+    for (auto& p : std::filesystem::directory_iterator(dll_path))
+    {
+        if (p.path() == "temp\\.gitignore" || p.path() == "temp\\Engine.dll") continue;
+
+        std::filesystem::path path(p);
+        const std::string class_name = path.stem().string();
+
+        MonoAssembly* assembly = mono_domain_assembly_open(m_domain, p.path().u8string().c_str());
+        MonoImage* image = mono_assembly_get_image(assembly);
+        MonoClass* klass = mono_class_from_name(image, "", class_name.c_str());
+        MonoObject* object = mono_object_new(m_domain, klass);
+
+        mono_runtime_object_init(object);
+
+        output_methods(klass);
+    }
+}
 
 int main()
 {
@@ -410,38 +488,14 @@ int main()
     // Eğer daha önceden derlendiyse bir daha framework derlenmesin
     if (!(mono_domain_assembly_open(m_domain, "temp/Engine.dll")))
     {
-        // Alınan dizin içerisindeki tüm cs dosyalarının bulunup framework dll'inin oluşturulması
-        std::string scripts_path;
-        printf("path to c# scripts: ");
-        std::cin >> scripts_path;
-        std::vector<std::string> api_cs_path;
-
-        for (auto& p : std::filesystem::directory_iterator(scripts_path))
-        {
-            // ScriptHelper'da framework vektörün ilk elemanının ismi ile oluşturulduğundan dolayı
-            if (p.path() == "scripts\\Engine.cs")
-                api_cs_path.insert(api_cs_path.begin(), p.path().u8string());
-            else
-                api_cs_path.insert(api_cs_path.end(), p.path().u8string());
-        }
-
-        printf("compiling assembly...\n");
-        CompileApiAssembly(api_cs_path);
+        CompileAssembly();
     }
 
     OpenCompiledAssembly();
 
-    // Engine dll'i kullanılarak kullanıcı scriptlerinin dll dosyalarının oluşturulması
-    std::string user_scripts_path;
-    printf("path to user c# scripts: ");
-    std::cin >> user_scripts_path;
-    std::vector<std::string> user_cs_path;
+    CompileUserScripts();
 
-    for (auto& p : std::filesystem::directory_iterator(user_scripts_path))
-    {
-        ScriptInstance script = Load(p.path().u8string());
-    }
-
+    LoadDLLs();
 
     //std::string serializedComponent = serializeScriptInstance(Load("scripts/SampleScript.cs"));
     //printf("%s\n", serializedComponent.c_str());

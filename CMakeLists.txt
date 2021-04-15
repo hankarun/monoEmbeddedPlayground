@@ -18,6 +18,11 @@ add_executable(monoScripting
 	src/Application.cpp
 	src/ScriptApi.h
 	src/ScriptHelper.h
+	src/ScriptHelper.cpp
+	src/ScriptInstance.h
+	src/ScriptInstance.cpp
+	src/ScriptFramework.cpp
+	src/ScriptFramework.h
 	src/main.cpp)
 
 target_link_libraries(monoScripting libmono)

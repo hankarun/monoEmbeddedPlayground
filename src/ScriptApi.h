@@ -20,6 +20,5 @@ static void RegisterCallbacks()
 {
     mono_add_internal_call("Simengine.Debug::PrintInfo", printInfo);
     mono_add_internal_call("Simengine.Time::Deltatime", deltaTime);
-
     mono_add_internal_call("Simengine.Debug::Log(single)", Debug_LogFloat);
 }

@@ -4,17 +4,11 @@
 class Application
 {
 public:
-	Application()
-	{
-		app = this;
-	}
+    Application();
 
 	void printInfo();
 
-	static Application* instance()
-	{
-		return app;
-	}
+    static Application* instance();
 
 	static Application* app;
 };

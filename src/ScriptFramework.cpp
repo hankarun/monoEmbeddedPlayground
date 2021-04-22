@@ -1,5 +1,6 @@
 ﻿#include "ScriptFramework.h"
 #include "ScriptApi.h"
+#include "ScriptHelper.h"
 
 #include <vector>
 #include <string>
@@ -19,9 +20,8 @@
 
 bool ScriptFramework::initialize(const std::string& monoDir)
 {
-    const std::string dir_scripts = "data\\";
-    const std::string dir_mono_lib = dir_scripts + std::string("mono\\lib");
-    const std::string dir_mono_etc = dir_scripts + std::string("mono\\etc");
+    const std::string dir_mono_lib = monoDir + "\\" + std::string("mono\\lib");
+    const std::string dir_mono_etc = monoDir + "\\" + std::string("mono\\etc");
 
     // Point mono to the libs and configuration files
     mono_set_dirs(dir_mono_lib.c_str(), dir_mono_etc.c_str());
@@ -64,9 +64,18 @@ bool ScriptFramework::load(const std::string& path)
     return true;
 }
 
+std::vector<std::string> ScriptFramework::createDirVector(const std::string& inputDir)
+{
+    std::vector<std::string> scriptsVector;
+    for (auto& p : std::filesystem::directory_iterator(inputDir)) {
+        scriptsVector.push_back(p.path().u8string());
+    }
+
+    return scriptsVector;
+}
+
 void ScriptFramework::createFramework(const std::string& inputDir, const std::string& outputDir)
 {
-    // Alınan dizin içerisindeki tüm cs dosyalarının bulunup framework dll'inin oluşturulması
     std::vector<std::string> api_cs_path;
 
     for (auto& p : std::filesystem::directory_iterator(inputDir)) {
@@ -77,16 +86,33 @@ void ScriptFramework::createFramework(const std::string& inputDir, const std::st
             api_cs_path.insert(api_cs_path.end(), p.path().u8string());
     }
 
-    printf("compiling assembly...\n");
+    MonoAssembly* api_assembly = compile_and_load_assembly(domain, api_cs_path, outputDir, false);
+
     load(outputDir);
 }
 
+
 bool ScriptFramework::compileScripts(const std::vector<std::string>& files)
 {
-    return false;
+    // compile_script fonksiyonu vectordeki tüm scriptleri tek bir dll olarak
+    // compile ettiğinden dolayı scriptlerin ayrı ayrı compile edilmesi için
+    std::vector<std::string> userScript;
+
+    for (auto& script : files) {
+        userScript.push_back(script);
+        compile_script(userScript, "temp", "temp/Engine.dll");
+        userScript.clear();
+    }
+    return true;
 }
+
 
 std::vector<ScriptInstance> ScriptFramework::loadScripts(const std::vector<std::string>& files)
 {
-    return std::vector<ScriptInstance>();
+    std::vector<ScriptInstance> scripts;
+    for (auto& script : files) {
+        scripts.push_back(ScriptInstance::load(domain, script));
+    }
+
+    return scripts;
 }

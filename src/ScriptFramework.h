@@ -11,6 +11,8 @@ public:
     bool initialize(const std::string& monoDir);
     bool load(const std::string& path);
 
+    std::vector<std::string> createDirVector(const std::string& inputDir);
+
     void createFramework(const std::string& inputDir, const std::string& outputDir);
 
     bool compileScripts(const std::vector<std::string>& files);

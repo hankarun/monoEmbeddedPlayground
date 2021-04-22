@@ -101,8 +101,8 @@ MonoAssembly * compile_and_load_assembly(MonoDomain * domain, const std::vector<
     std::filesystem::path p(scripts.at(0));
     const std::string outName = outputDir + "/" + p.filename().replace_extension(".dll").string();
 
-    //bool result = compareTimestamps(scripts.at(0), outName);
-    bool result = false;
+    bool result = compareTimestamps(scripts.at(0), outName);
+    //bool result = false;
 
     if (!result)
     {
@@ -112,7 +112,7 @@ MonoAssembly * compile_and_load_assembly(MonoDomain * domain, const std::vector<
             const std::string callbacks = outputDir + "/Engine.dll";
 
             // Compile script
-            if (!compile_script(scripts, callbacks))
+            if (!compile_script(scripts, outputDir, callbacks))
             {
                 printf("Failed to compile script");
                 return nullptr;

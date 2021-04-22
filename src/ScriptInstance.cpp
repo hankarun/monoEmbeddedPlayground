@@ -75,9 +75,9 @@ ScriptInstance ScriptInstance::load(MonoDomain* domain, const std::string& file_
         return script;
     }
 
-    //output_methods(script.klass);
-    //output_properties(script.klass);
-    //output_fields(script.klass, script.object);
+    script.output_methods();
+    //script.output_properties();
+    //script.printFields();
 
     // Return script id
     return script;

@@ -77,11 +77,13 @@ int main(int arg, char* argv[])
         for (auto& script : scripts)
         {
             // Load data
-            script.deserializeData("");
+            script.deserializeData("temp");
             script.init();
             script.update();
-            auto data = script.serializeData();
+            script.printFields();
             // Save data
+            //script.serializeData("temp"); 
+
         }
     }
 

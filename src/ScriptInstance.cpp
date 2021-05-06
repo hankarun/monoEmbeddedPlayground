@@ -1,6 +1,7 @@
 #include "ScriptInstance.h"
 #include "ScriptHelper.h"
 #include <filesystem>
+#include <fstream>
 
 #include <../rapidjson/document.h>
 #include <../rapidjson/prettywriter.h>
@@ -75,15 +76,15 @@ ScriptInstance ScriptInstance::load(MonoDomain* domain, const std::string& file_
         return script;
     }
 
-    script.output_methods();
+    //script.output_methods();
     //script.output_properties();
-    //script.printFields();
+    script.printFields();
 
     // Return script id
     return script;
 }
 
-std::string ScriptInstance::serializeData() const
+void ScriptInstance::serializeData(const std::string& json_path) const
 {
     const char* name = mono_class_get_name(klass);
     using namespace rapidjson;
@@ -117,11 +118,45 @@ std::string ScriptInstance::serializeData() const
     }
     writer.EndObject();
 
-    return sb.GetString();
+    std::string json(sb.GetString());
+    std::string className = name;
+    std::ofstream os(json_path + "\\" + className + ".json");
+    os << json;
+    os.close();
 }
 
-void ScriptInstance::deserializeData(const std::string& data)
+void ScriptInstance::deserializeData(const std::string& json_path)
 {
+    const std::string name = mono_class_get_name(klass);
+    std::ifstream file(json_path + "\\" + name + ".json");
+    std::ostringstream oss;
+    oss << file.rdbuf();
+    const std::string data = oss.str();
+
+    rapidjson::Document doc;
+    doc.Parse(data.c_str());
+
+    if (doc.Parse(data.c_str()).HasParseError())
+        printf("Failed to parse serialized data");
+    
+    for (rapidjson::Value::ConstMemberIterator itr = doc.MemberBegin(); itr != doc.MemberEnd(); ++itr)
+    {
+        if (itr->value.IsString())
+        {   
+            std::string variableName = itr->name.GetString();
+            if (variableName != "script") {
+                std::string strValue = itr->value.GetString();
+                std::string* strp = &strValue;
+                SetValue(strp, variableName);
+            }
+        }
+        else if (itr->value.IsInt()) 
+        {
+            int intValue = itr->value.GetInt();
+            int* intp = &intValue;
+            SetValue(intp, itr->name.GetString());
+        }
+    }
 }
 
 inline void ScriptInstance::printFields()

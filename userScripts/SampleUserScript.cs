@@ -8,6 +8,8 @@ public class SampleUserScript : MonoSystem
 	public int counter = 5;
 	public string componentName = "transform2";
 	private int v = 7;
+	public bool bool_ = true;
+	public double double_ = 0.231; 
 	
 	private void PrintAppData()
 	{

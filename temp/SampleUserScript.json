@@ -2,5 +2,7 @@
     "script": "SampleUserScript",
     "counter": 5,
     "componentName": "transform2",
-    "v": 7
+    "v": 7,
+    "bool_": true,
+    "double_": 0.231
 }

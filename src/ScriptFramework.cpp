@@ -86,7 +86,7 @@ void ScriptFramework::createFramework(const std::string& inputDir, const std::st
             api_cs_path.insert(api_cs_path.end(), p.path().u8string());
     }
 
-    MonoAssembly* api_assembly = compile_and_load_assembly(domain, api_cs_path, outputDir, false);
+    compile_script(api_cs_path, outputDir);
 
     load(outputDir);
 }

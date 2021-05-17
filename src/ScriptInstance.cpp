@@ -106,7 +106,7 @@ void ScriptInstance::serializeData(const std::string& json_path) const
             writer.Int(value);
         }
 
-        if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_STRING) {
+        else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_STRING) {
             MonoString* strval;
             mono_field_get_value(object, field, &strval);
             char* p = mono_string_to_utf8(strval);
@@ -114,6 +114,20 @@ void ScriptInstance::serializeData(const std::string& json_path) const
             writer.Key(mono_field_get_name(field));
             writer.String(p);
             mono_free(p);
+        }
+
+        else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_R8) {
+            double value = 0;
+            mono_field_get_value(object, field, &value);
+            writer.Key(mono_field_get_name(field));
+            writer.Double(value);
+        }
+
+        else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_BOOLEAN) {
+            bool b = true;
+            mono_field_get_value(object, field, &b);
+            writer.Key(mono_field_get_name(field));
+            writer.Bool(b);
         }
     }
     writer.EndObject();
@@ -156,6 +170,19 @@ void ScriptInstance::deserializeData(const std::string& json_path)
             int* intp = &intValue;
             SetValue(intp, itr->name.GetString());
         }
+        else if (itr->value.IsDouble())
+        {
+            double doubleValue = itr->value.GetDouble();
+            double* dp = &doubleValue;
+            SetValue(dp, itr->name.GetString());
+        }
+        else if (itr->value.IsBool())
+        {
+            bool boolValue = itr->value.GetBool();
+            bool* bp = &boolValue;
+            SetValue(bp, itr->name.GetString());
+        }
+
     }
 }
 
@@ -195,12 +222,24 @@ inline void ScriptInstance::printFields()
             printf(" Value (int32) : %d\n", value);
         }
 
-        if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_STRING) {
+        else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_STRING) {
             MonoString* strval;
             mono_field_get_value(object, field, &strval);
             char* p = mono_string_to_utf8(strval);
             printf(" Value of str is: %s\n", p);
             mono_free(p);
+        }
+
+        else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_R8) {
+            double value = 0;
+            mono_field_get_value(object, field, &value);
+            printf(" Value (Double): %f\n", value);
+        }
+
+        else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_BOOLEAN) {
+            bool b = true;
+            mono_field_get_value(object, field, &b);
+            printf(" Value (Boolean): %d\n", b);
         }
     }
 }

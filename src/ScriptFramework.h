@@ -17,6 +17,9 @@ public:
 
     bool compileScripts(const std::vector<std::string>& files);
     std::vector<ScriptInstance> loadScripts(const std::vector<std::string>& files);
+    ScriptInstance loadScript(const std::string& filename);
+
+    MonoDomain* getDomain() const { return domain; }
 private:
     MonoDomain* domain;
 };

@@ -111,8 +111,14 @@ std::vector<ScriptInstance> ScriptFramework::loadScripts(const std::vector<std::
 {
     std::vector<ScriptInstance> scripts;
     for (auto& script : files) {
-        scripts.push_back(ScriptInstance::load(domain, script));
+        if (script.find(".dll") != std::string::npos)
+            scripts.push_back(ScriptInstance::load(domain, script));
     }
 
     return scripts;
+}
+
+ScriptInstance ScriptFramework::loadScript(const std::string& filename)
+{
+    return ScriptInstance::load(domain, filename);
 }

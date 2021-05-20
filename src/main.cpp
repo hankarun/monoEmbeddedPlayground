@@ -1,8 +1,8 @@
 #include "Application.h"
 #include "ScriptApi.h"
+#include "ScriptFramework.h"
 #include "ScriptHelper.h"
 #include "ScriptInstance.h"
-#include "ScriptFramework.h"
 
 #include <filesystem>
 #include <fstream>
@@ -22,15 +22,14 @@ void printCommandLineInfo()
     Usage:
         -t "source directory" "output directory" - Compile framework 
         -u "source directory" "output directory" - Compile user scripts in to dlls
-        -l "source directory" - Load managed dlls and run scripts
+        -l script.dll - User scrip dll
     )";
     printf("%s", info);
 }
 
-
 // Serialize and deserialize functionality need to be implemented in a way
 int main(int arg, char* argv[])
-{   
+{
     if (arg == 1) {
         printCommandLineInfo();
         return 1;
@@ -67,24 +66,17 @@ int main(int arg, char* argv[])
             printCommandLineInfo();
             return 1;
         }
-        const char* inputDir = argv[2];
-        const char* outputDir = argv[3];
+        const char* inputFile = argv[2];
         printf("Running user scripts.\n");
-        printf("Input Dir: %s\n", inputDir);
+        printf("Input Dir: %s\n", inputFile);
         Application app;
         scriptFramework.load("temp");
-        auto scripts = scriptFramework.loadScripts(scriptFramework.createDirVector(inputDir));
-        for (auto& script : scripts)
-        {
-            // Load data
-            script.deserializeData("temp");
-            script.init();
-            script.update();
-            script.printFields();
-            // Save data
-            //script.serializeData("temp"); 
-
-        }
+        auto script = scriptFramework.loadScript(inputFile);
+        script.deserializeData(scriptFramework.getDomain() ,"temp");
+        script.init();
+        script.update();
+        script.printFields();
+        //script.serializeData("temp");
     }
 
     return 0;

@@ -14,7 +14,7 @@ ScriptInstance ScriptInstance::load(MonoDomain* domain, const std::string& file_
     std::filesystem::path p(file_path);
     const std::string class_name = p.stem().string();
 
-    script.assembly = compile_and_load_assembly(domain, { file_path }, "temp");
+    script.assembly = mono_domain_assembly_open(domain, file_path.c_str());
     if (!script.assembly) {
         printf("Failed to load assembly");
         return script;
@@ -139,7 +139,7 @@ void ScriptInstance::serializeData(const std::string& json_path) const
     os.close();
 }
 
-void ScriptInstance::deserializeData(const std::string& json_path)
+void ScriptInstance::deserializeData(MonoDomain* domain, const std::string& json_path)
 {
     const std::string name = mono_class_get_name(klass);
     std::ifstream file(json_path + "\\" + name + ".json");
@@ -160,8 +160,7 @@ void ScriptInstance::deserializeData(const std::string& json_path)
             std::string variableName = itr->name.GetString();
             if (variableName != "script") {
                 std::string strValue = itr->value.GetString();
-                std::string* strp = &strValue;
-                SetValue(strp, variableName);
+                SetStringValue(domain, &strValue, variableName);
             }
         }
         else if (itr->value.IsInt()) 

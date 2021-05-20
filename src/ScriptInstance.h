@@ -22,9 +22,21 @@ public:
         return false;
     }
 
+    bool SetStringValue(MonoDomain* domain, std::string* value, const std::string& name)
+    {
+        if (MonoClassField* field = mono_class_get_field_from_name(klass, name.c_str())) {
+            MonoString * str = mono_string_new(domain, value->c_str());
+            mono_field_set_value(object, field, str);
+            return true;
+        }
+
+        printf("Failed to set value for field %s", name.c_str());
+        return false;
+    }
+
     static ScriptInstance load(MonoDomain* domain, const std::string& file_path);
     void serializeData(const std::string& json_path) const;
-    void deserializeData(const std::string& json_path);
+    void deserializeData(MonoDomain* domain, const std::string& json_path);
 
     void printFields();
     void output_methods();
@@ -32,6 +44,7 @@ public:
 
     void init();
     void update();
+
 private:
     MonoAssembly* assembly = nullptr;
     MonoImage* image = nullptr;

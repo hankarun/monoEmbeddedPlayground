@@ -15,7 +15,7 @@ public:
 
     void createFramework(const std::string& inputDir, const std::string& outputDir);
 
-    bool compileScripts(const std::vector<std::string>& files);
+    bool compileScripts(const std::vector<std::string>& files, const std::string outputDir);
     std::vector<ScriptInstance> loadScripts(const std::vector<std::string>& files);
     ScriptInstance loadScript(const std::string& filename);
 

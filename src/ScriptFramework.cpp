@@ -45,7 +45,10 @@ bool ScriptFramework::initialize(const std::string& monoDir)
 
 bool ScriptFramework::load(const std::string& path)
 {
-    MonoAssembly* api_assembly = mono_domain_assembly_open(domain, "temp/Engine.dll");
+    const std::string framework_path = path + std::string("\\Engine.dll");
+    const char* fp = framework_path.c_str();
+
+    MonoAssembly* api_assembly = mono_domain_assembly_open(domain, fp);
     if (!api_assembly) {
         printf("Failed to get api assembly");
         return false;
@@ -79,8 +82,7 @@ void ScriptFramework::createFramework(const std::string& inputDir, const std::st
     std::vector<std::string> api_cs_path;
 
     for (auto& p : std::filesystem::directory_iterator(inputDir)) {
-        // ScriptHelper'da framework vektörün ilk elemanının ismi ile oluşturulduğundan dolayı
-        if (p.path() == "scripts\\Engine.cs")
+        if (p.path() == inputDir + "\\Engine.cs")
             api_cs_path.insert(api_cs_path.begin(), p.path().u8string());
         else
             api_cs_path.insert(api_cs_path.end(), p.path().u8string());
@@ -92,16 +94,16 @@ void ScriptFramework::createFramework(const std::string& inputDir, const std::st
 }
 
 
-bool ScriptFramework::compileScripts(const std::vector<std::string>& files)
+bool ScriptFramework::compileScripts(const std::vector<std::string>& files, const std::string outputDir)
 {
-    // compile_script fonksiyonu vectordeki tüm scriptleri tek bir dll olarak
-    // compile ettiğinden dolayı scriptlerin ayrı ayrı compile edilmesi için
     std::vector<std::string> userScript;
 
     for (auto& script : files) {
-        userScript.push_back(script);
-        compile_script(userScript, "temp", "temp/Engine.dll");
-        userScript.clear();
+        if (script.find(".cs") != std::string::npos) {
+            userScript.push_back(script);
+            compile_script(userScript, outputDir, outputDir + "\\Engine.dll");
+            userScript.clear();
+        }
     }
     return true;
 }

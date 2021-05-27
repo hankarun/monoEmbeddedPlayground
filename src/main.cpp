@@ -3,6 +3,7 @@
 #include "ScriptFramework.h"
 #include "ScriptHelper.h"
 #include "ScriptInstance.h"
+#include "ImGuiFrame.h"
 
 #include <filesystem>
 #include <fstream>
@@ -75,8 +76,11 @@ int main(int arg, char* argv[])
         script.init();
         script.update();
         script.printFields();
-        //script.serializeData("userScripts");
-    }
 
+        script.updateVariablesOnGUI(scriptFramework.getDomain(), "userScripts");
+        script.printFields();
+
+        //script.serializeData("userScripts");
+    }    
     return 0;
 }

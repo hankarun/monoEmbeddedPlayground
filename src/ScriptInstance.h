@@ -37,6 +37,7 @@ public:
     static ScriptInstance load(MonoDomain* domain, const std::string& file_path);
     void serializeData(const std::string& json_path) const;
     void deserializeData(MonoDomain* domain, const std::string& json_path);
+    void updateVariablesOnGUI(MonoDomain* domain, const std::string& json_path);
 
     void printFields();
     void output_methods();

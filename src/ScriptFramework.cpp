@@ -121,6 +121,6 @@ std::vector<ScriptInstance> ScriptFramework::loadScripts(const std::vector<std::
 }
 
 ScriptInstance ScriptFramework::loadScript(const std::string& filename)
-{
+{   
     return ScriptInstance::load(domain, filename);
 }

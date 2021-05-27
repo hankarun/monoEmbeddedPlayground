@@ -7,6 +7,7 @@
 #include <mono/metadata/object.h>
 
 #include <string>
+#include <vector>
 
 class ScriptInstance {
 public:
@@ -37,7 +38,6 @@ public:
     static ScriptInstance load(MonoDomain* domain, const std::string& file_path);
     void serializeData(const std::string& json_path) const;
     void deserializeData(MonoDomain* domain, const std::string& json_path);
-    void updateVariablesOnGUI(MonoDomain* domain, const std::string& json_path);
 
     void printFields();
     void output_methods();
@@ -46,11 +46,16 @@ public:
     void init();
     void update();
 
-private:
+    size_t getFieldCount() const { return fields.size(); }
+    MonoClassField* getField(size_t index) { return fields.at(index); }
+    const char* getClassName() const;
+
+public:
     MonoAssembly* assembly = nullptr;
     MonoImage* image = nullptr;
     MonoClass* klass = nullptr;
     MonoObject* object = nullptr;
     MonoMethod* method_start = nullptr;
     MonoMethod* method_update = nullptr;
+    std::vector<MonoClassField*> fields;
 };

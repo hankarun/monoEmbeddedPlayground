@@ -77,9 +77,13 @@ ScriptInstance ScriptInstance::load(MonoDomain* domain, const std::string& file_
         return script;
     }
 
-    //script.output_methods();
-    //script.output_properties();
-    script.printFields();
+    MonoClassField* field;
+    void* iter = NULL;
+    while ((field = mono_class_get_fields(script.klass, &iter))) {
+        auto fieldFlags = mono_field_get_flags(field) & MONO_FIELD_ATTR_FIELD_ACCESS_MASK;
+        if (fieldFlags == MONO_FIELD_ATTR_PUBLIC)
+            script.fields.push_back(field);
+    }
 
     // Return script id
     return script;
@@ -177,141 +181,7 @@ void ScriptInstance::deserializeData(MonoDomain* domain, const std::string& json
     }
 }
 
-void ScriptInstance::updateVariablesOnGUI(MonoDomain* domain, const std::string& json_path)
-{
-    const std::string name = mono_class_get_name(klass);
-    std::ifstream file(json_path + "\\" + name + ".json");
-    std::ostringstream oss;
-    oss << file.rdbuf();
-    const std::string data = oss.str();
-
-    rapidjson::Document doc;
-    doc.Parse(data.c_str());
-
-    ImGuiFrame frame;
-    frame.Initialize();
-
-    bool done = false;
-    while (!done) {
-        MSG msg;
-        while (::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE)) {
-            ::TranslateMessage(&msg);
-            ::DispatchMessage(&msg);
-            if (msg.message == WM_QUIT)
-                done = true;
-        }
-        if (done)
-            break;
-
-        frame.CreateFrame();
-
-        static bool simulationRunning = false;
-        {
-            if (ImGui::BeginMainMenuBar()) {
-                if (ImGui::BeginMenu("File")) {
-                    if (ImGui::MenuItem("Update Engine Framework")) {
-                        // Compile engine framework
-                    }
-                    if (ImGui::MenuItem("Load User Scripts")) {
-                        // Load Scripts
-                        // Compile if engine is newer than dll
-                        // Compile if cs is newer than dll
-                        // Compile if dll not found
-                    }
-                    ImGui::EndMenu();
-                }
-
-                if (ImGui::BeginMenu("Simulation")) {
-                    if (!simulationRunning) {
-                        if (ImGui::MenuItem("Start"))
-                            simulationRunning = true;
-                    } else {
-                        if (ImGui::MenuItem("Stop"))
-                            simulationRunning = false;
-                    }
-                    ImGui::EndMenu();
-                }
-
-                ImGui::EndMainMenuBar();
-            }
-
-            if (ImGui::Begin("Script Manager", 0, ImGuiWindowFlags_::ImGuiWindowFlags_MenuBar)) {
-                // For every script loaded
-                static int selected = 0;
-                if (ImGui::Selectable("Sample Script File", selected == 0))
-                    selected = 0;
-                if (ImGui::Selectable("Sample Script File2", selected == 1))
-                    selected = 1;
-            }
-            ImGui::End();
-
-            if (ImGui::Begin("Output Window")) {
-                ImGui::Text("Scrpit outputs");
-            }
-            ImGui::End();
-
-            if (ImGui::Begin("Script Inspector")) {
-                MonoClassField* field;
-                void* iter = NULL;
-                while ((field = mono_class_get_fields(klass, &iter))) {
-                    ImGui::PushID(mono_field_get_name(field));
-                    if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_I4) {
-                        int value = 0;
-                        mono_field_get_value(object, field, &value);
-                        if (ImGui::DragInt(mono_field_get_name(field), &value))
-                            mono_field_set_value(object, field, &value);
-                    }
-
-                    else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_STRING) {
-                        MonoString* strval;
-                        mono_field_get_value(object, field, &strval);
-                        char* p = mono_string_to_utf8(strval);
-                        int size = mono_string_length(strval);
-                        if (ImGui::InputText(mono_field_get_name(field), p, size)) {
-                            std::string data(p);
-                            SetStringValue(domain, &data, mono_field_get_name(field));
-                        }
-                        mono_free(p);
-                    }
-
-                    else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_R8) {
-                        double value = 0;
-                        mono_field_get_value(object, field, &value);
-                        if (ImGui::DragScalarN(mono_field_get_name(field), ImGuiDataType_Double, (void*)&value, 1, 1))
-                            mono_field_set_value(object, field, &value);
-                    }
-
-                    else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_BOOLEAN) {
-                        bool b = true;
-                        mono_field_get_value(object, field, &b);
-                        if (ImGui::Checkbox(mono_field_get_name(field), &b))
-                            mono_field_set_value(object, field, &b);
-                    }
-                    ImGui::PopID();
-                }
-            }
-            ImGui::End();
-        }
-
-        {
-            ImGui::Begin("Help");
-            ImGui::Text("User Guide: ");
-
-            ImGui::BulletText("Update script variables using input bars.");
-            ImGui::BulletText("Press Update button to save.");
-            ImGui::BulletText("You can use +- on numerical values.");
-            ImGui::BulletText("Use ESCAPE to undo changes.");
-            ImGui::BulletText("You can apply arithmetic operators \n +, *, / on numerical values.");
-
-            ImGui::End();
-        }
-
-        frame.Render();
-    }
-    frame.EndFrame();
-}
-
-inline void ScriptInstance::printFields()
+void ScriptInstance::printFields()
 {
     MonoClassField* field;
     void* iter = NULL;
@@ -403,4 +273,9 @@ void ScriptInstance::update()
 {
     if (method_update)
         mono_runtime_invoke(method_update, NULL, NULL, NULL);
+}
+
+const char* ScriptInstance::getClassName() const
+{
+    return mono_class_get_name(klass);
 }

@@ -205,23 +205,37 @@ void ScriptInstance::updateVariablesOnGUI(MonoDomain* domain, const std::string&
 
         frame.CreateFrame();
 
+        static bool simulationRunning = false;
         {
-            if (ImGui::Begin("Script Manager", 0, ImGuiWindowFlags_::ImGuiWindowFlags_MenuBar)) {
-
-                if (ImGui::BeginMenuBar())
-                {
-                    if (ImGui::BeginMenu("File"))
-                    {
-                        if (ImGui::MenuItem("Select Script Directory"))
-                        {
-                            // Load Scripts
-                        }
-                        ImGui::EndMenu();
+            if (ImGui::BeginMainMenuBar()) {
+                if (ImGui::BeginMenu("File")) {
+                    if (ImGui::MenuItem("Update Engine Framework")) {
+                        // Compile engine framework
                     }
-
-                    ImGui::EndMenuBar();
+                    if (ImGui::MenuItem("Load User Scripts")) {
+                        // Load Scripts
+                        // Compile if engine is newer than dll
+                        // Compile if cs is newer than dll
+                        // Compile if dll not found
+                    }
+                    ImGui::EndMenu();
                 }
 
+                if (ImGui::BeginMenu("Simulation")) {
+                    if (!simulationRunning) {
+                        if (ImGui::MenuItem("Start"))
+                            simulationRunning = true;
+                    } else {
+                        if (ImGui::MenuItem("Stop"))
+                            simulationRunning = false;
+                    }
+                    ImGui::EndMenu();
+                }
+
+                ImGui::EndMainMenuBar();
+            }
+
+            if (ImGui::Begin("Script Manager", 0, ImGuiWindowFlags_::ImGuiWindowFlags_MenuBar)) {
                 // For every script loaded
                 static int selected = 0;
                 if (ImGui::Selectable("Sample Script File", selected == 0))
@@ -230,6 +244,12 @@ void ScriptInstance::updateVariablesOnGUI(MonoDomain* domain, const std::string&
                     selected = 1;
             }
             ImGui::End();
+
+            if (ImGui::Begin("Output Window")) {
+                ImGui::Text("Scrpit outputs");
+            }
+            ImGui::End();
+
             if (ImGui::Begin("Script Inspector")) {
                 MonoClassField* field;
                 void* iter = NULL;

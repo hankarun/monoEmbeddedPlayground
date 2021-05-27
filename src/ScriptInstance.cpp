@@ -1,6 +1,6 @@
 #include "ScriptInstance.h"
-#include "ScriptHelper.h"
 #include "ImGuiFrame.h"
+#include "ScriptHelper.h"
 #include <filesystem>
 #include <fstream>
 
@@ -154,30 +154,22 @@ void ScriptInstance::deserializeData(MonoDomain* domain, const std::string& json
     if (doc.Parse(data.c_str()).HasParseError())
         printf("Failed to parse serialized data");
 
-    for (rapidjson::Value::ConstMemberIterator itr = doc.MemberBegin(); itr != doc.MemberEnd(); ++itr)
-    {
-        if (itr->value.IsString())
-        {
+    for (rapidjson::Value::ConstMemberIterator itr = doc.MemberBegin(); itr != doc.MemberEnd(); ++itr) {
+        if (itr->value.IsString()) {
             std::string variableName = itr->name.GetString();
             if (variableName != "script") {
                 std::string strValue = itr->value.GetString();
                 SetStringValue(domain, &strValue, variableName);
             }
-        }
-        else if (itr->value.IsInt())
-        {
+        } else if (itr->value.IsInt()) {
             int intValue = itr->value.GetInt();
             int* intp = &intValue;
             SetValue(intp, itr->name.GetString());
-        }
-        else if (itr->value.IsDouble())
-        {
+        } else if (itr->value.IsDouble()) {
             double doubleValue = itr->value.GetDouble();
             double* dp = &doubleValue;
             SetValue(dp, itr->name.GetString());
-        }
-        else if (itr->value.IsBool())
-        {
+        } else if (itr->value.IsBool()) {
             bool boolValue = itr->value.GetBool();
             bool* bp = &boolValue;
             SetValue(bp, itr->name.GetString());
@@ -198,13 +190,11 @@ void ScriptInstance::updateVariablesOnGUI(MonoDomain* domain, const std::string&
 
     ImGuiFrame frame;
     frame.Initialize();
-    
+
     bool done = false;
-    while (!done)
-    {
+    while (!done) {
         MSG msg;
-        while (::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE))
-        {
+        while (::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE)) {
             ::TranslateMessage(&msg);
             ::DispatchMessage(&msg);
             if (msg.message == WM_QUIT)
@@ -217,101 +207,44 @@ void ScriptInstance::updateVariablesOnGUI(MonoDomain* domain, const std::string&
 
         {
             ImGui::Begin("MONO");
-            int id_counter = 1;   //to prevent id conflict in imgui
 
-            for (rapidjson::Value::ConstMemberIterator itr = doc.MemberBegin(); itr != doc.MemberEnd(); ++itr)
-            {
-
-                if (itr->value.IsString())
-                {
-                    std::string variableName = itr->name.GetString();
-                    if (variableName != "script") {
-
-                        ImGui::BulletText(itr->name.GetString());
-                        ImGui::SameLine(); ImGui::Text(" : ");
-                        ImGui::SameLine(); ImGui::Text(itr->value.GetString());
-
-                        static char new_val[128] = " ";
-                        ImGui::PushID(id_counter);  ImGui::InputText("String", new_val, IM_ARRAYSIZE(new_val)); ImGui::PopID(); id_counter++;
-                        ImGui::PushID(id_counter);
-                        if (ImGui::Button("UPDATE")) {
-                            std::string strval = new_val;
-                            SetStringValue(domain, &strval, variableName);
-                            ImGui::SameLine(); ImGui::Text("Variable updated.");
-                        }
-                        ImGui::Spacing();
-                        ImGui::Separator();
-                        ImGui::Spacing();
-                        ImGui::PopID(); id_counter++;
-                    }
-                    else {
-                        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), itr->value.GetString());
-                        ImGui::Spacing();
-                        ImGui::Separator();
-                        ImGui::Spacing();
-                    }
+            MonoClassField* field;
+            void* iter = NULL;
+            while ((field = mono_class_get_fields(klass, &iter))) {
+                if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_I4) {
+                    int value = 0;
+                    mono_field_get_value(object, field, &value);
+                    if (ImGui::DragInt(mono_field_get_name(field), &value))
+                        mono_field_set_value(object, field, &value);
                 }
 
-                else if (itr->value.IsInt())
-                {
-                    ImGui::BulletText(itr->name.GetString());
-                    ImGui::SameLine(); ImGui::Text(" : ");
-                    ImGui::SameLine(); ImGui::Text("%d", itr->value.GetInt());
-
-                    static int new_int = itr->value.GetInt();
-                    ImGui::PushID(id_counter); ImGui::InputInt("Int", &new_int); ImGui::PopID(); id_counter++;
-                    ImGui::PushID(id_counter);
-                    if (ImGui::Button("UPDATE")) {
-                        int* intp = &new_int;
-                        SetValue(intp, itr->name.GetString());
-                        ImGui::SameLine(); ImGui::Text("Variable updated.");
+                else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_STRING) {
+                    MonoString* strval;
+                    mono_field_get_value(object, field, &strval);
+                    char* p = mono_string_to_utf8(strval);
+                    int size = mono_string_length(strval);
+                    if (ImGui::InputText(mono_field_get_name(field), p, size)) {
+                        std::string data(p);
+                        SetStringValue(domain, &data, mono_field_get_name(field));
                     }
-                    ImGui::Spacing();
-                    ImGui::Separator();
-                    ImGui::Spacing();
-                    ImGui::PopID(); id_counter++;
+                    mono_free(p);
                 }
 
-                else if (itr->value.IsDouble())
-                {
-                    ImGui::BulletText(itr->name.GetString());
-                    ImGui::SameLine(); ImGui::Text(" : ");
-                    ImGui::SameLine(); ImGui::Text("%f", itr->value.GetDouble());
-
-                    static double new_double = itr->value.GetDouble(); 
-                    ImGui::PushID(id_counter); ImGui::InputDouble("Double", &new_double); ImGui::PopID(); id_counter++;
-                    ImGui::PushID(id_counter);
-                    if (ImGui::Button("UPDATE")) {
-                        double* dp = &new_double;
-                        SetValue(dp, itr->name.GetString());
-                        ImGui::SameLine(); ImGui::Text("Variable updated.");
-                    }
-                    ImGui::Spacing();
-                    ImGui::Separator();
-                    ImGui::Spacing();
-                    ImGui::PopID(); id_counter++;
+                else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_R8) {
+                    double value = 0;
+                    mono_field_get_value(object, field, &value);
+                    if (ImGui::DragScalarN(mono_field_get_name(field), ImGuiDataType_Double, (void*)&value, 1, 1))
+                        mono_field_set_value(object, field, &value);
                 }
 
-                else if (itr->value.IsBool())
-                {
-                    ImGui::BulletText(itr->name.GetString());
-                    ImGui::SameLine(); ImGui::Text(" : ");
-                    ImGui::SameLine(); ImGui::Text("%d", itr->value.GetBool());
-
-                    static double new_bool = itr->value.GetBool();
-                    ImGui::PushID(id_counter); ImGui::InputDouble("Boolean", &new_bool); ImGui::PopID(); id_counter++;
-                    ImGui::PushID(id_counter);
-                    if (ImGui::Button("UPDATE")) {
-                        double* dp = &new_bool;
-                        SetValue(dp, itr->name.GetString());
-                        ImGui::SameLine(); ImGui::Text("Variable updated.");
-                    }
-                    ImGui::Spacing();
-                    ImGui::Separator();
-                    ImGui::Spacing();
-                    ImGui::PopID(); id_counter++;
+                else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_BOOLEAN) {
+                    bool b = true;
+                    mono_field_get_value(object, field, &b);
+                    if (ImGui::Checkbox(mono_field_get_name(field), &b))
+                        mono_field_set_value(object, field, &b);
                 }
             }
+            
             ImGui::End();
         }
 
@@ -332,7 +265,6 @@ void ScriptInstance::updateVariablesOnGUI(MonoDomain* domain, const std::string&
     }
     frame.EndFrame();
 }
-
 
 inline void ScriptInstance::printFields()
 {

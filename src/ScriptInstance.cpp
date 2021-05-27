@@ -206,45 +206,70 @@ void ScriptInstance::updateVariablesOnGUI(MonoDomain* domain, const std::string&
         frame.CreateFrame();
 
         {
-            ImGui::Begin("MONO");
+            if (ImGui::Begin("Script Manager", 0, ImGuiWindowFlags_::ImGuiWindowFlags_MenuBar)) {
 
-            MonoClassField* field;
-            void* iter = NULL;
-            while ((field = mono_class_get_fields(klass, &iter))) {
-                if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_I4) {
-                    int value = 0;
-                    mono_field_get_value(object, field, &value);
-                    if (ImGui::DragInt(mono_field_get_name(field), &value))
-                        mono_field_set_value(object, field, &value);
-                }
-
-                else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_STRING) {
-                    MonoString* strval;
-                    mono_field_get_value(object, field, &strval);
-                    char* p = mono_string_to_utf8(strval);
-                    int size = mono_string_length(strval);
-                    if (ImGui::InputText(mono_field_get_name(field), p, size)) {
-                        std::string data(p);
-                        SetStringValue(domain, &data, mono_field_get_name(field));
+                if (ImGui::BeginMenuBar())
+                {
+                    if (ImGui::BeginMenu("File"))
+                    {
+                        if (ImGui::MenuItem("Select Script Directory"))
+                        {
+                            // Load Scripts
+                        }
+                        ImGui::EndMenu();
                     }
-                    mono_free(p);
+
+                    ImGui::EndMenuBar();
                 }
 
-                else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_R8) {
-                    double value = 0;
-                    mono_field_get_value(object, field, &value);
-                    if (ImGui::DragScalarN(mono_field_get_name(field), ImGuiDataType_Double, (void*)&value, 1, 1))
-                        mono_field_set_value(object, field, &value);
-                }
+                // For every script loaded
+                static int selected = 0;
+                if (ImGui::Selectable("Sample Script File", selected == 0))
+                    selected = 0;
+                if (ImGui::Selectable("Sample Script File2", selected == 1))
+                    selected = 1;
+            }
+            ImGui::End();
+            if (ImGui::Begin("Script Inspector")) {
+                MonoClassField* field;
+                void* iter = NULL;
+                while ((field = mono_class_get_fields(klass, &iter))) {
+                    ImGui::PushID(mono_field_get_name(field));
+                    if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_I4) {
+                        int value = 0;
+                        mono_field_get_value(object, field, &value);
+                        if (ImGui::DragInt(mono_field_get_name(field), &value))
+                            mono_field_set_value(object, field, &value);
+                    }
 
-                else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_BOOLEAN) {
-                    bool b = true;
-                    mono_field_get_value(object, field, &b);
-                    if (ImGui::Checkbox(mono_field_get_name(field), &b))
-                        mono_field_set_value(object, field, &b);
+                    else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_STRING) {
+                        MonoString* strval;
+                        mono_field_get_value(object, field, &strval);
+                        char* p = mono_string_to_utf8(strval);
+                        int size = mono_string_length(strval);
+                        if (ImGui::InputText(mono_field_get_name(field), p, size)) {
+                            std::string data(p);
+                            SetStringValue(domain, &data, mono_field_get_name(field));
+                        }
+                        mono_free(p);
+                    }
+
+                    else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_R8) {
+                        double value = 0;
+                        mono_field_get_value(object, field, &value);
+                        if (ImGui::DragScalarN(mono_field_get_name(field), ImGuiDataType_Double, (void*)&value, 1, 1))
+                            mono_field_set_value(object, field, &value);
+                    }
+
+                    else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_BOOLEAN) {
+                        bool b = true;
+                        mono_field_get_value(object, field, &b);
+                        if (ImGui::Checkbox(mono_field_get_name(field), &b))
+                            mono_field_set_value(object, field, &b);
+                    }
+                    ImGui::PopID();
                 }
             }
-            
             ImGui::End();
         }
 

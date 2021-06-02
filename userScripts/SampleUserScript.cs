@@ -8,8 +8,8 @@ public class SampleUserScript : MonoSystem
 	public int counter = 5;
 	public string componentName = "transform2";
 	public int v = 7;
-	public bool bool_ = true;
-	public double double_ = 0.231; 
+	public bool enterLoop = true;
+	public double angle = 0.231; 
 	
 	private void PrintAppData()
 	{
@@ -24,12 +24,16 @@ public class SampleUserScript : MonoSystem
 		}
 	}
 	
-	public void Update()
+	public void PrintComponentName()
 	{
-		float  dt = Time.Deltatime();
-		for (int i = 0; i < v; i++)
+		Vector3 position = getTransform().getPosition();
+		if (enterLoop)
 		{
+			for (int i = 0; i < v; i++)
+			{
+				Debug.Log(componentName);
+			}
+		}else
 			Debug.Log(componentName);
-		}
 	}
 }

@@ -90,7 +90,7 @@ void ScriptFramework::createFramework(const std::string& inputDir, const std::st
 
     compile_script(api_cs_path, outputDir);
 
-    load(outputDir);
+    //load(outputDir);
 }
 
 
@@ -113,10 +113,11 @@ std::vector<ScriptInstance> ScriptFramework::loadScripts(const std::vector<std::
 {
     std::vector<ScriptInstance> scripts;
     for (auto& script : files) {
-        if (script.find(".dll") != std::string::npos)
-            scripts.push_back(ScriptInstance::load(domain, script));
+        if (script.find(".dll") != std::string::npos){
+            if (std::filesystem::path(script).stem() != std::string("Engine"))
+                scripts.push_back(ScriptInstance::load(domain, script));
+        }
     }
-
     return scripts;
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <sstream>
 
 class Application
 {
@@ -12,3 +13,5 @@ public:
 
 	static Application* app;
 };
+
+std::stringstream& getStream();

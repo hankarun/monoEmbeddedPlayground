@@ -11,14 +11,20 @@
 #include <mono/metadata/exception.h>
 #include <mono/metadata/appdomain.h>
 #include "Application.h"
+#include <sstream>
 
 static void printInfo()           { return Application::instance()->printInfo(); }
 static float deltaTime()           { return 1 / 60.0f; }
-static void Debug_LogFloat(float delta_time) { printf("%f\n", delta_time); }
+
+static void Debug_LogString(MonoString* response)
+{
+    auto data = mono_string_to_utf8(response);
+    getStream() << data << std::endl;
+}
 
 static void RegisterCallbacks()
 {
     mono_add_internal_call("Simengine.Debug::PrintInfo", printInfo);
     mono_add_internal_call("Simengine.Time::Deltatime", deltaTime);
-    mono_add_internal_call("Simengine.Debug::Log(single)", Debug_LogFloat);
+    mono_add_internal_call("Simengine.Debug::Log", Debug_LogString);
 }

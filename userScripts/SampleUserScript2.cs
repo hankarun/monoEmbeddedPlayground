@@ -7,7 +7,7 @@ public class SampleUserScript2 : MonoSystem
 {
 	public int counter = 5;
 	public string componentName = "transform2";
-	private int v = 7;
+	public int v = 7;
 	
 	private void PrintAppData()
 	{
@@ -27,7 +27,7 @@ public class SampleUserScript2 : MonoSystem
 		float  dt = Time.Deltatime();
 		for (int i = 0; i < v; i++)
 		{
-			Debug.Log(dt);
+			Debug.Log(componentName);
 		}
 	}
 }

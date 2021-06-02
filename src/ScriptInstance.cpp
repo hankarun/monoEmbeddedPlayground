@@ -9,6 +9,11 @@
 #include <../rapidjson/stringbuffer.h>
 #include <../rapidjson/writer.h>
 
+void ScriptInstance::unload(MonoDomain* domain)
+{
+    mono_assembly_close(assembly);
+}
+
 ScriptInstance ScriptInstance::load(MonoDomain* domain, const std::string& file_path)
 {
     ScriptInstance script;
@@ -48,10 +53,27 @@ ScriptInstance ScriptInstance::load(MonoDomain* domain, const std::string& file_
     }
 
     // Get methods
-    if (!(mono_class_num_methods(script.klass))) {
-        script.method_start = get_method(script.image, class_name + ":Start()");
-        script.method_update = get_method(script.image, class_name + ":Update()");
+    void* iter2 = NULL;
+    MonoMethod* method;
+    while (method = mono_class_get_methods(script.klass, &iter2)) {
+        std::string methodName = mono_method_get_name(method);
+        if (methodName == ".ctor")
+            continue;
+        uint32_t flags = mono_method_get_flags(method, nullptr);
+
+        bool _isStatic = (flags & MONO_METHOD_ATTR_STATIC) != 0;
+        switch (flags & MONO_METHOD_ATTR_ACCESS_MASK) {
+        case MONO_METHOD_ATTR_PUBLIC:
+            script.methods[methodName] = method;
+            break;
+        }
     }
+
+    //int numMethods = mono_class_num_methods(script.klass);
+    //if (numMethods > 0) {
+    //    script.method_start = get_method(script.image, class_name + ":Start()");
+    //    script.method_update = get_method(script.image, class_name + ":Update()");
+    //}
 
     // Set entity handle
     //if (!script.SetValue(script_component->GetEntity(), "_internal_entity_handle"))
@@ -263,16 +285,10 @@ void ScriptInstance::output_properties()
     }
 }
 
-void ScriptInstance::init()
+void ScriptInstance::runMethod(const char* name)
 {
-    if (method_start)
-        mono_runtime_invoke(method_start, NULL, NULL, NULL);
-}
-
-void ScriptInstance::update()
-{
-    if (method_update)
-        mono_runtime_invoke(method_update, NULL, NULL, NULL);
+    if (methods[name])
+        mono_runtime_invoke(methods[name], object, NULL, NULL);
 }
 
 const char* ScriptInstance::getClassName() const

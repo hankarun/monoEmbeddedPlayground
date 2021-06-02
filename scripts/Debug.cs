@@ -8,8 +8,8 @@ namespace Simengine
 	{
 		[MethodImpl(MethodImplOptions.InternalCall)]
 		public static extern void PrintInfo();
-
+		
 		[MethodImpl(MethodImplOptions.InternalCall)]
-		public static extern void Log(float value);
+		public static extern void Log(string value);
 	}
 }

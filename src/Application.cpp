@@ -16,3 +16,9 @@ Application * Application::instance()
 {
     return app;
 }
+
+std::stringstream& getStream()
+{
+    static std::stringstream outputStream;
+    return outputStream;
+}

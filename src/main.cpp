@@ -16,95 +16,15 @@
 #pragma comment(lib, "version.lib")
 #pragma comment(lib, "ws2_32")
 
-static void ShowUpdateFrameworkLayout(bool* p_open, ScriptFramework scriptFramework)
-{
-    // Compile engine framework
-    ImGui::SetNextWindowSize(ImVec2(500, 440), ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("Update Engine Framework", p_open))
-    {
-        static char inputDir[128] = "";
-        ImGui::InputText("Framework Scripts Directory", inputDir, IM_ARRAYSIZE(inputDir));
-
-        static char outputDir[128] = "";
-        ImGui::InputText("Framework Output Directory", outputDir, IM_ARRAYSIZE(outputDir));
-
-        if (ImGui::Button("UPDATE")) {
-            mono_runtime_quit();
-            scriptFramework.createFramework(inputDir, outputDir);
-        }
-    }
-    ImGui::End();
-}
-
-static void ShowCompileScriptLayout(bool* p_open, ScriptFramework scriptFramework)
-{
-    ImGui::SetNextWindowSize(ImVec2(500, 440), ImGuiCond_FirstUseEver);
-
-    if (ImGui::Begin("Compile Scripts", p_open))
-    {
-        static char inputDir[128] = "";
-        ImGui::InputText("User Scripts Directory", inputDir, IM_ARRAYSIZE(inputDir));
-        
-        static char outputDir[128] = "";
-        ImGui::InputText("Dll Output Directory", outputDir, IM_ARRAYSIZE(outputDir));
-        
-        static char frameworkDir[128] = "";
-        ImGui::InputText("Engine Framework Directory", frameworkDir, IM_ARRAYSIZE(frameworkDir));
-
-        if (ImGui::Button("COMPILE")) {
-            mono_runtime_quit(); 
-            // Compile if dll not found
-            std::vector<std::string> userScripts;
-            for (auto& script : scriptFramework.createDirVector(inputDir)) {
-                if (script.find(".cs") != std::string::npos) {
-                    std::string dllPath = outputDir + std::string("\\") + std::filesystem::path(script).stem().replace_extension(".dll").string();
-                    if (!std::filesystem::exists(dllPath)) {
-                        userScripts.push_back(script);
-                    }
-                }
-            }
-            scriptFramework.compileScripts(userScripts, frameworkDir);
-
-            // Compile if engine is newer than dll
-            std::vector<std::string> scriptsToCompile;
-            for (auto& script : scriptFramework.createDirVector(outputDir)) {
-                if (script.find(".dll") != std::string::npos) {
-                    if (std::filesystem::path(script).stem() != std::string("Engine")) {
-                        if (compareTimestamps(script, frameworkDir + std::string("\\Engine.dll"))) {
-                            std::string scriptName = inputDir + std::string("\\") + std::filesystem::path(script).stem().replace_extension(".cs").string();
-                            scriptsToCompile.push_back(scriptName);
-                        }
-                    }
-                }
-            }
-            scriptFramework.compileScripts(scriptsToCompile, frameworkDir);
-
-            // Compile if cs is newer than dll
-            std::vector<std::string> updatedScripts;
-            for (auto& script : scriptFramework.createDirVector(inputDir)) {
-                if (script.find(".cs") != std::string::npos) {
-                    if (compareTimestamps(outputDir + std::string("\\") + std::filesystem::path(script).stem().replace_extension(".dll").string(), script)) {
-                        updatedScripts.push_back(script);
-                    }
-                }
-            }
-            scriptFramework.compileScripts(updatedScripts, frameworkDir);
-
-        }
-    }
-    ImGui::End();
-}
-
-static void ShowScriptManagerLayout(bool* p_open, ScriptFramework scriptFramework, ScriptInstance* current)
+void ShowScriptManagerLayout(bool* p_open, ScriptFramework scriptFramework, ScriptInstance* current)
 {
     if (ImGui::Begin("Output Window")) {
-        ImGui::Text("Script outputs");
+        ImGui::TextUnformatted(getStream().str().c_str());
     }
     ImGui::End();
 
     if (ImGui::Begin("Script Inspector")) {
-        if (current)
-        {
+        if (current) {
             for (size_t i = 0; i < current->getFieldCount(); ++i) {
                 auto field = current->getField(i);
                 ImGui::PushID(mono_field_get_name(field));
@@ -120,13 +40,14 @@ static void ShowScriptManagerLayout(bool* p_open, ScriptFramework scriptFramewor
                     mono_field_get_value(current->object, field, &strval);
                     char* p = mono_string_to_utf8(strval);
                     int size = mono_string_length(strval);
-                    if (ImGui::InputText(mono_field_get_name(field), p, size)) {
-                        std::string data(p);
-                        current->SetStringValue(scriptFramework.getDomain(), &data, mono_field_get_name(field));
+                    static std::string buffer;
+                    buffer = p;
+                    buffer.resize(size + 10.0);
+                    if (ImGui::InputText(mono_field_get_name(field), buffer.data(), buffer.size())) {
+                        current->SetStringValue(scriptFramework.getDomain(), &buffer, mono_field_get_name(field));
                     }
                     mono_free(p);
-                }
-                else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_R8) {
+                } else if (mono_type_get_type(mono_field_get_type(field)) == MONO_TYPE_R8) {
                     double value = 0;
                     mono_field_get_value(current->object, field, &value);
                     if (ImGui::DragScalarN(mono_field_get_name(field), ImGuiDataType_Double, (void*)&value, 1, 1))
@@ -141,6 +62,15 @@ static void ShowScriptManagerLayout(bool* p_open, ScriptFramework scriptFramewor
                 }
                 ImGui::PopID();
             }
+
+            ImGui::Text("Script Functions");
+            for (auto& k : current->methods)
+            {
+                if (ImGui::Button(k.first.c_str()))
+                {
+                    current->runMethod(k.first.c_str());
+                }
+            }
         }
     }
     ImGui::End();
@@ -148,23 +78,24 @@ static void ShowScriptManagerLayout(bool* p_open, ScriptFramework scriptFramewor
 
 int main(int arg, char* argv[])
 {
+    const char* dataDir = "dlls";
+    const char* engineDir = "scripts";
+    const char* monoDir = "data";
+
     ScriptFramework scriptFramework;
-    scriptFramework.initialize("data");
+    scriptFramework.initialize(monoDir);
     Application app;
-    scriptFramework.load("dlls");
+    if (!std::filesystem::exists("dlls/Engine.dll"))
+    {
+        printf("Engine dll not found, compiling.\n");
+        scriptFramework.createFramework(engineDir, dataDir);
+    }
+    scriptFramework.load(dataDir);
 
     ImGuiFrame frame;
     frame.Initialize();
-    
-    std::vector<ScriptInstance> scriptInstances = scriptFramework.loadScripts(scriptFramework.createDirVector("dlls"));
-    for (auto& script : scriptInstances) {
-        script.deserializeData(scriptFramework.getDomain(), "userScripts");
-        script.init();
-    }
 
-    bool load_user_scripts = false;
-    bool update_engine_framework = false;
-    bool script_manager = true;
+    std::vector<ScriptInstance> scriptInstances;
 
     bool done = false;
     while (!done) {
@@ -187,9 +118,9 @@ int main(int arg, char* argv[])
         if (selected != -1 && selected < scriptInstances.size())
             current = &scriptInstances.at(selected);
 
-
         if (simulationRunning) {
-            current->update();
+            if (current)
+                current->runMethod("Update");
         }
 
         if (ImGui::Begin("Script Manager")) {
@@ -204,15 +135,46 @@ int main(int arg, char* argv[])
         {
             if (ImGui::BeginMainMenuBar()) {
                 if (ImGui::BeginMenu("File")) {
-                    if (ImGui::MenuItem("Update Engine Framework")) {
-                        update_engine_framework = true;
+                    if (ImGui::MenuItem("Load scripts from userscripts directory")) {
+
+                        for (auto& script : scriptInstances) {
+                            script.unload(scriptFramework.getDomain());
+                        }
+                        scriptInstances.clear();
+
+                        const char* inputDir = "userScripts";
+                        std::vector<std::string> userScripts;
+                        std::vector<std::string> scriptsToLoad;
+                        for (auto& script : scriptFramework.createDirVector(inputDir)) {
+                            if (script.find(".cs") != std::string::npos) {
+                                std::string dllPath = dataDir + std::string("\\") + std::filesystem::path(script).stem().replace_extension(".dll").string();
+                                if (!std::filesystem::exists(dllPath)) {
+                                    userScripts.push_back(script);
+                                } else if (compareTimestamps(script, dataDir + std::string("\\Engine.dll"))) {
+                                    userScripts.push_back(script);
+                                } else if (compareTimestamps(dataDir + std::string("\\") + std::filesystem::path(script).stem().replace_extension(".dll").string(), script)) {
+                                    userScripts.push_back(script);
+                                }
+                                scriptsToLoad.push_back(script);
+                            }
+                        }
+
+                        scriptFramework.compileScripts(userScripts, dataDir);
+
+                        for (auto& s : scriptsToLoad)
+                        {
+                            std::filesystem::path p(s);
+                            s = dataDir;
+                            s += "/";
+                            s += p.stem().replace_extension(".dll").string();
+                        }
+                        scriptInstances = scriptFramework.loadScripts(scriptsToLoad);
+                        for (auto& script : scriptInstances) {
+                            script.deserializeData(scriptFramework.getDomain(), "userScripts");
+                            script.runMethod("Start");
+                        }
                     }
-                    if (ImGui::MenuItem("Compile User Scripts")) {
-                        load_user_scripts = true;
-                    }
-                    if (ImGui::MenuItem("Script Manager")) {
-                        script_manager = true;
-                    }
+
                     ImGui::EndMenu();
                 }
 
@@ -230,18 +192,12 @@ int main(int arg, char* argv[])
                 ImGui::EndMainMenuBar();
             }
 
-            if (update_engine_framework) 
-                ShowUpdateFrameworkLayout(&update_engine_framework, scriptFramework);
-
-            if (load_user_scripts) 
-                ShowCompileScriptLayout(&load_user_scripts, scriptFramework);
-
-            if (script_manager)
-                ShowScriptManagerLayout(&script_manager, scriptFramework, current);
+            static bool show = true;
+            ShowScriptManagerLayout(&show, scriptFramework, current);
         }
         frame.Render();
     }
     frame.EndFrame();
-  
+
     return 0;
 }

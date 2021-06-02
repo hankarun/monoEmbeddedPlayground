@@ -8,6 +8,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 class ScriptInstance {
 public:
@@ -36,6 +37,7 @@ public:
     }
 
     static ScriptInstance load(MonoDomain* domain, const std::string& file_path);
+    void unload(MonoDomain* domain);
     void serializeData(const std::string& json_path) const;
     void deserializeData(MonoDomain* domain, const std::string& json_path);
 
@@ -43,8 +45,7 @@ public:
     void output_methods();
     void output_properties();
 
-    void init();
-    void update();
+    void runMethod(const char* name);
 
     size_t getFieldCount() const { return fields.size(); }
     MonoClassField* getField(size_t index) { return fields.at(index); }
@@ -55,7 +56,6 @@ public:
     MonoImage* image = nullptr;
     MonoClass* klass = nullptr;
     MonoObject* object = nullptr;
-    MonoMethod* method_start = nullptr;
-    MonoMethod* method_update = nullptr;
+    std::unordered_map<std::string, MonoMethod*> methods;
     std::vector<MonoClassField*> fields;
 };

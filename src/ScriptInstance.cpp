@@ -161,7 +161,7 @@ void ScriptInstance::serializeData(const std::string& json_path) const
 
     std::string json(sb.GetString());
     std::string className = name;
-    std::ofstream os(json_path + "\\" + className + ".json");
+    std::ofstream os(json_path + "\\" + className + ".cs.data");
     os << json;
     os.close();
 }
@@ -169,7 +169,11 @@ void ScriptInstance::serializeData(const std::string& json_path) const
 void ScriptInstance::deserializeData(MonoDomain* domain, const std::string& json_path)
 {
     const std::string name = mono_class_get_name(klass);
-    std::ifstream file(json_path + "\\" + name + ".json");
+    if (!std::filesystem::exists(json_path + "\\" + name + ".cs.data"))
+    {
+        serializeData(json_path);
+    }
+    std::ifstream file(json_path + "\\" + name + ".cs.data");
     std::ostringstream oss;
     oss << file.rdbuf();
     const std::string data = oss.str();

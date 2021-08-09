@@ -1,4 +1,4 @@
-﻿#include "ScriptFramework.h"
+#include "ScriptFramework.h"
 #include "ScriptApi.h"
 #include "ScriptHelper.h"
 
@@ -101,7 +101,17 @@ bool ScriptFramework::compileScripts(const std::vector<std::string>& files, cons
     for (auto& script : files) {
         if (script.find(".cs") != std::string::npos) {
             userScript.push_back(script);
-            compile_script(userScript, outputDir, outputDir + "\\Engine.dll");
+            try
+            {
+                bool b=compile_script(userScript, outputDir, outputDir + "\\Engine.dll");
+                
+               
+            }
+            catch (...)
+            {
+                std::cout << "Error occured.";
+            }
+
             userScript.clear();
         }
     }

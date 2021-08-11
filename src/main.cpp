@@ -16,10 +16,29 @@
 #pragma comment(lib, "version.lib")
 #pragma comment(lib, "ws2_32")
 
+char* input_user_dir;
+char* output_user_dir;
+
 void ShowScriptManagerLayout(bool* p_open, ScriptFramework scriptFramework, ScriptInstance* current)
 {
     if (ImGui::Begin("Output Window")) {
         ImGui::TextUnformatted(getStream().str().c_str());
+    }
+    ImGui::End();
+
+    if (ImGui::Begin("Compile Framework")) {
+        /*ImGui::TextUnformatted(getStream().str().c_str());*/
+
+        /*static char input_dir[128]= "C:\\monoStaj\\monoEmbeddedPlayground\\userScripts";*/
+        static char input_dir[128] = "C:\\userScripts"; 
+        ImGui::InputText("Input Dir", input_dir, IM_ARRAYSIZE(input_dir));
+        
+        input_user_dir = input_dir;
+        
+        /*static char output_dir[128] = "C:\\monoStaj\\monoEmbeddedPlayground\\userScripts\\out";*/
+        static char output_dir[128] = "C:\\userScripts\\out";
+        ImGui::InputText("Output Dir", output_dir, IM_ARRAYSIZE(output_dir));
+        output_user_dir = output_dir;
     }
     ImGui::End();
 
@@ -130,11 +149,14 @@ int main(int arg, char* argv[])
                     selected = i;
             }
         }
+
         ImGui::End();
 
         {
+          
             if (ImGui::BeginMainMenuBar()) {
                 if (ImGui::BeginMenu("File")) {
+                   
                     if (ImGui::MenuItem("Load scripts from userscripts directory")) {
 
                         for (auto& script : scriptInstances) {
@@ -142,35 +164,48 @@ int main(int arg, char* argv[])
                         }
                         scriptInstances.clear();
 
-                        const char* inputDir = "userScripts";
+                        char* inputDir = input_user_dir;
+                        char* outputDir = output_user_dir;
                         std::vector<std::string> userScripts;
                         std::vector<std::string> scriptsToLoad;
                         for (auto& script : scriptFramework.createDirVector(inputDir)) {
                             if (script.find(".cs") != std::string::npos) {
-                                std::string dllPath = dataDir + std::string("\\") + std::filesystem::path(script).stem().replace_extension(".dll").string();
+                                std::string dllPath = outputDir + std::string("\\") + std::filesystem::path(script).stem().replace_extension(".dll").string();
                                 if (!std::filesystem::exists(dllPath)) {
                                     userScripts.push_back(script);
-                                } else if (compareTimestamps(script, dataDir + std::string("\\Engine.dll"))) {
+                                } else if (compareTimestamps(script, outputDir + std::string("\\Engine.dll"))) {
                                     userScripts.push_back(script);
-                                } else if (compareTimestamps(dataDir + std::string("\\") + std::filesystem::path(script).stem().replace_extension(".dll").string(), script)) {
+                                } else if (compareTimestamps(outputDir + std::string("\\") + std::filesystem::path(script).stem().replace_extension(".dll").string(), script)) {
                                     userScripts.push_back(script);
                                 }
                                 scriptsToLoad.push_back(script);
                             }
                         }
 
-                        scriptFramework.compileScripts(userScripts, dataDir);
-
+                        scriptFramework.compileScripts(userScripts, outputDir);
+                        std::vector<std::string> scriptsToLoad1;
                         for (auto& s : scriptsToLoad)
                         {
+                            std::string name = s;
                             std::filesystem::path p(s);
-                            s = dataDir;
+                            s = outputDir;
                             s += "/";
                             s += p.stem().replace_extension(".dll").string();
+
+                            if (std::filesystem::exists(s)) {
+
+                         
+                                 if (compareTimestamps(outputDir + std::string("\\") + std::filesystem::path(name).stem().replace_extension(".dll").string(), name)) {
+                                     scriptsToLoad1.push_back(name);
+                                   }
+
+                            }
+                            
                         }
+                        
                         scriptInstances = scriptFramework.loadScripts(scriptsToLoad);
                         for (auto& script : scriptInstances) {
-                            script.deserializeData(scriptFramework.getDomain(), "userScripts");
+                            script.deserializeData(scriptFramework.getDomain(), inputDir);
                             script.runMethod("Start");
                         }
                     }
@@ -191,6 +226,20 @@ int main(int arg, char* argv[])
 
                 ImGui::EndMainMenuBar();
             }
+            /*if (open_popup_input) ImGui::OpenPopup("Input Source");
+            if (ImGui::BeginPopup("Input Source"))
+            {
+                char buf1[60] = { 0 };
+                char buf2[60] = { 0 };
+                bool ret=ImGui::InputText("Input Dir", buf1, IM_ARRAYSIZE(buf1));
+                if (ret)
+                {
+
+                    input_user_dir = buf1;
+                }
+                ImGui::InputText("Output Dir", buf2, IM_ARRAYSIZE(buf2));
+                ImGui::EndPopup();
+            }*/
 
             static bool show = true;
             ShowScriptManagerLayout(&show, scriptFramework, current);

@@ -19,6 +19,27 @@
 char* input_user_dir;
 char* output_user_dir;
 
+bool EndsWith(std::string str, std::string suffix)
+{
+    if (str=="" || suffix=="")
+        return false;
+    size_t lenstr = str.size();
+    size_t lensuffix = suffix.size();
+    if (lensuffix > lenstr)
+        return false;
+    std::string suffix2 = str.substr(lenstr - lensuffix,lensuffix);
+    int res= suffix2.compare(suffix);
+    if (res==0)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+    /*return strncmp(str + lenstr - lensuffix, suffix, lensuffix) == 0;*/
+}
+
 void ShowScriptManagerLayout(bool* p_open, ScriptFramework scriptFramework, ScriptInstance* current)
 {
     if (ImGui::Begin("Output Window")) {
@@ -169,7 +190,7 @@ int main(int arg, char* argv[])
                         std::vector<std::string> userScripts;
                         std::vector<std::string> scriptsToLoad;
                         for (auto& script : scriptFramework.createDirVector(inputDir)) {
-                            if (script.find(".cs") != std::string::npos) {
+                            if (EndsWith(script, ".cs")){
                                 std::string dllPath = outputDir + std::string("\\") + std::filesystem::path(script).stem().replace_extension(".dll").string();
                                 if (!std::filesystem::exists(dllPath)) {
                                     userScripts.push_back(script);
@@ -181,10 +202,10 @@ int main(int arg, char* argv[])
                                 scriptsToLoad.push_back(script);
                             }
                         }
-
-                        scriptFramework.compileScripts(userScripts, outputDir);
                         std::vector<std::string> scriptsToLoad1;
-                        for (auto& s : scriptsToLoad)
+                        scriptsToLoad1=scriptFramework.compileScripts2(userScripts, outputDir);
+                        
+                        for (auto& s : scriptsToLoad1)
                         {
                             std::string name = s;
                             std::filesystem::path p(s);
@@ -203,7 +224,7 @@ int main(int arg, char* argv[])
                             
                         }
                         
-                        scriptInstances = scriptFramework.loadScripts(scriptsToLoad);
+                        scriptInstances = scriptFramework.loadScripts(scriptsToLoad1);
                         for (auto& script : scriptInstances) {
                             script.deserializeData(scriptFramework.getDomain(), inputDir);
                             script.runMethod("Start");
@@ -226,21 +247,6 @@ int main(int arg, char* argv[])
 
                 ImGui::EndMainMenuBar();
             }
-            /*if (open_popup_input) ImGui::OpenPopup("Input Source");
-            if (ImGui::BeginPopup("Input Source"))
-            {
-                char buf1[60] = { 0 };
-                char buf2[60] = { 0 };
-                bool ret=ImGui::InputText("Input Dir", buf1, IM_ARRAYSIZE(buf1));
-                if (ret)
-                {
-
-                    input_user_dir = buf1;
-                }
-                ImGui::InputText("Output Dir", buf2, IM_ARRAYSIZE(buf2));
-                ImGui::EndPopup();
-            }*/
-
             static bool show = true;
             ShowScriptManagerLayout(&show, scriptFramework, current);
         }

@@ -73,6 +73,7 @@ bool compile_script(const std::vector<std::string>& scripts, const std::string &
     while (std::getline(f, line))
     {
         printf("%s \n", line.c_str());
+        compilation_result = false;
     }
 
     if (compilation_result)

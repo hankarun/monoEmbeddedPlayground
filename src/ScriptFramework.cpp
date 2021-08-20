@@ -93,19 +93,37 @@ void ScriptFramework::createFramework(const std::string& inputDir, const std::st
     //load(outputDir);
 }
 
-
+bool ScriptFramework::EndsWith(std::string str, std::string suffix)
+{
+    if (str == "" || suffix == "")
+        return false;
+    size_t lenstr = str.size();
+    size_t lensuffix = suffix.size();
+    if (lensuffix > lenstr)
+        return false;
+    std::string suffix2 = str.substr(lenstr - lensuffix, lensuffix);
+    int res = suffix2.compare(suffix);
+    if (res == 0)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+    /*return strncmp(str + lenstr - lensuffix, suffix, lensuffix) == 0;*/
+}
 bool ScriptFramework::compileScripts(const std::vector<std::string>& files, const std::string outputDir)
 {
     std::vector<std::string> userScript;
 
     for (auto& script : files) {
-        if (script.find(".cs") != std::string::npos) {
+        if (EndsWith(script, ".cs")) {
             userScript.push_back(script);
             try
             {
-                bool b=compile_script(userScript, outputDir, outputDir + "\\Engine.dll");
-                
-               
+                bool b = compile_script(userScript, outputDir, outputDir + "\\Engine.dll");
+              
             }
             catch (...)
             {
@@ -116,6 +134,35 @@ bool ScriptFramework::compileScripts(const std::vector<std::string>& files, cons
         }
     }
     return true;
+}
+
+std::vector<std::string> ScriptFramework::compileScripts2(const std::vector<std::string>& files, const std::string outputDir)
+{
+    std::vector<std::string> userScript;
+    std::vector<std::string> correctFiles;
+    for (auto& script : files) {
+        if (EndsWith(script, ".cs")){
+            userScript.push_back(script);
+            try
+            {
+                bool b=compile_script(userScript, outputDir, outputDir + "\\Engine.dll");
+                if (b)
+                {
+                    correctFiles.push_back(script);
+
+                }   
+                else
+                    std::cout << "Error occured.The file cannot be compiled.";
+            }
+            catch (...)
+            {
+                std::cout << "Error occured.";
+            }
+
+            userScript.clear();
+        }
+    }
+    return correctFiles;
 }
 
 

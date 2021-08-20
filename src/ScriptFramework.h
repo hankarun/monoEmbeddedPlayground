@@ -12,10 +12,10 @@ public:
     bool load(const std::string& path);
 
     std::vector<std::string> createDirVector(const std::string& inputDir);
-
+    bool EndsWith(std::string str, std::string suffix);
     void createFramework(const std::string& inputDir, const std::string& outputDir);
-
     bool compileScripts(const std::vector<std::string>& files, const std::string outputDir);
+    std::vector<std::string> compileScripts2(const std::vector<std::string>& files, const std::string outputDir);
     std::vector<ScriptInstance> loadScripts(const std::vector<std::string>& files);
     ScriptInstance loadScript(const std::string& filename);
 

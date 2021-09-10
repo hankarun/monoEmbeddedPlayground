@@ -28,17 +28,20 @@ ScriptCompiler::ScriptCompiler(const char* compilerPath)
 {
 }
 
-bool ScriptCompiler::compile(const char* filename, const char* outputdir, const std::vector<const char*>& dllRefrences)
+bool ScriptCompiler::compile(const std::vector<const char*>& filenames, const char* outputName, const std::vector<const char*>& dllRefrences)
 {
     std::stringstream stream;
     stream << compilerPath;
-    stream << " -target:library -nologo";
+    stream << " -target:library -nologo ";
+    stream << " -out:" << outputName << " ";
     if (!dllRefrences.empty())
     {
         stream << " -reference:";
         for (auto& ref : dllRefrences)
             stream << ref << " ";
     }
+    for (auto& name : filenames)
+        stream << name << " ";
     execute_command(stream.str().c_str());
     return false;
 }

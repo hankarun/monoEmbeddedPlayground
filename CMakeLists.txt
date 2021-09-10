@@ -16,13 +16,10 @@ set_target_properties(libmono PROPERTIES
 set(SOURCE_LIST
 	src/Application.h
 	src/Application.cpp
-	src/ScriptApi.h
-	src/ScriptHelper.h
-	src/ScriptHelper.cpp
-	src/ScriptInstance.h
-	src/ScriptInstance.cpp
-	src/ScriptFramework.cpp
-	src/ScriptFramework.h
+	src/ScriptCompiler.h
+	src/ScriptCompiler.cpp	
+	src/InitialLayer.cpp	
+	src/InitialLayer.h	
 	src/ImGuiFrame.cpp
 	src/ImGuiFrame.h
 	src/main.cpp

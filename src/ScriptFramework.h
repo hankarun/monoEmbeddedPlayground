@@ -23,3 +23,13 @@ public:
 private:
     MonoDomain* domain;
 };
+
+class ScriptCompiler
+{
+public:
+    bool compile(const char* filename, const char* outputdir);
+
+    const char* getLastError() const;
+private:
+    std::string error;
+};

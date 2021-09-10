@@ -29,6 +29,7 @@ set(SOURCE_LIST
 	imgui/imconfig.h
 	imgui/imgui.h
 	imgui/imgui.cpp
+	imgui/imgui_demo.cpp
 	imgui/imgui_draw.cpp
 	imgui/imgui_impl_dx11.h
 	imgui/imgui_impl_dx11.cpp
@@ -46,7 +47,7 @@ add_executable(monoScripting
 	${SOURCE_LIST})
 
 target_link_libraries(monoScripting libmono)
-target_link_libraries(monoScripting d3d11.lib;)
+target_link_libraries(monoScripting d3d11.lib Winmm Bcrypt ws2_32)
 
 source_group(TREE ${CMAKE_SOURCE_DIR} FILES ${SOURCE_LIST})
 set_property(TARGET monoScripting PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")

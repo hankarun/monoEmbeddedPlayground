@@ -1,0 +1,2 @@
+
+bool initialize(const char*);

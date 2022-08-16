@@ -91,7 +91,7 @@ bool initialize(const char* monoDir)
 
 	RegisterCallbacks();
 
-	const char* filename = "C:\\Users\\hankarun\\Desktop\\ray-tracing-in-one-weekend\\build\\game\\Debug\\Game.dll";
+	const char* filename = "C:\\Users\\hankarun\\Desktop\\monoEmbeddedPlayground\\build\\game\\Debug\\Game.dll";
 	MonoAssembly* assembly = mono_domain_assembly_open(domain, filename);
 	if (assembly == nullptr)
 	{

@@ -17,16 +17,18 @@
 #include "material.h"
 #include "random.h"
 
-#include <vector>
-#include <windows.h>
-#include <ppl.h>
+#include "raylib.h"
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
+#include <vector>
+#include <ppl.h>
+#include <thread>
+#include <future>
+#include <functional>
+
+//#define STB_IMAGE_WRITE_IMPLEMENTATION
+//#include "stb_image_write.h"
 
 #include "mono.h"
-
-
 
 vec3 color(const ray& r, hitable *world, int depth) {
     hit_record rec;
@@ -102,7 +104,7 @@ int main() {
     initializeScripts();
     const int nx = 1200;
     const int ny = 800;
-    const int ns = 5;
+    const int ns = 50;
     
     hitable *world = random_scene();
 
@@ -116,28 +118,67 @@ int main() {
     std::vector<unsigned char> data;
     data.resize(nx * ny * 3);
 
-    concurrency::parallel_for(0, ny, 1, [&](int j) {
-        for (int i = 0; i < nx; i++) {
-            vec3 col(0, 0, 0);
-            for (int s=0; s < ns; s++) {
-                float u = float(i + random_double()) / float(nx);
-                float v = float(j + random_double()) / float(ny);
-                ray r = cam.get_ray(u, v);
-                col += color(r, world,0);
+    std::packaged_task task([&]() {
+        concurrency::parallel_for(0, ny, 1, [&](int j) {
+            for (int i = 0; i < nx; i++) {
+                vec3 col(0, 0, 0);
+                for (int s = 0; s < ns; s++) {
+                    float u = float(i + random_double()) / float(nx);
+                    float v = float(j + random_double()) / float(ny);
+                    ray r = cam.get_ray(u, v);
+                    col += color(r, world, 0);
+                }
+                col /= float(ns);
+                col = vec3(sqrt(col[0]), sqrt(col[1]), sqrt(col[2]));
+                int ir = int(255.99 * col[0]);
+                int ig = int(255.99 * col[1]);
+                int ib = int(255.99 * col[2]);
+                int pixelIndex = (i + (ny - j - 1) * nx) * 3;
+                data[pixelIndex] = ir;
+                data[pixelIndex + 1] = ig;
+                data[pixelIndex + 2] = ib;
             }
-            col /= float(ns);
-            col = vec3( sqrt(col[0]), sqrt(col[1]), sqrt(col[2]) );
-            int ir = int(255.99*col[0]);
-            int ig = int(255.99*col[1]);
-            int ib = int(255.99*col[2]);
-            int pixelIndex = (i + (ny - j - 1) * nx) * 3;
-            data[pixelIndex] = ir;
-            data[pixelIndex + 1] = ig;
-            data[pixelIndex + 2] = ib;
-        }    
-    });
+            });
+        });
 
+    std::future<void> result = task.get_future();
 
-    int result = stbi_write_bmp("out.bmp", nx, ny, 3, data.data());
-    std::cout << "Image write result " << result << std::endl;
+    std::thread task_td(std::move(task));
+
+    const int screenWidth = 1200;
+    const int screenHeight = 800;
+
+    InitWindow(screenWidth, screenHeight, "Simple Engine");
+
+    SetTargetFPS(60);         
+    Image img;
+    img.width = 1200;
+    img.height = 800;
+    img.data = data.data();
+    img.mipmaps = 1;
+    img.format = PixelFormat::PIXELFORMAT_UNCOMPRESSED_R8G8B8;
+
+    Texture2D tex = LoadTextureFromImage(img);
+
+    while (!WindowShouldClose())    // Detect window close button or ESC key
+    {
+        BeginDrawing();
+
+        ClearBackground(RAYWHITE);
+
+        DrawTexture(tex, 0, 0, WHITE);
+        if (result._Is_ready())
+            DrawText("Finished", 10, 10, 20, BLACK);
+        else
+            DrawText("Generating picture...", 10, 10, 20, BLACK);
+
+        UpdateTexture(tex, data.data());
+
+        EndDrawing();
+    }
+
+    CloseWindow();
+
+    printf("Generating picture...");
+    task_td.join();
 }

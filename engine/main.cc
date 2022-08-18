@@ -16,6 +16,7 @@
 #include "camera.h"
 #include "material.h"
 #include "random.h"
+#include "triangle.h"
 
 #include "raylib.h"
 
@@ -51,9 +52,8 @@ vec3 color(const ray& r, hitable *world, int depth) {
 
 
 hitable *random_scene() {
-    int n = 500;
-    hitable **list = new hitable*[n+1];
-    list[0] =  new sphere(vec3(0,-1000,0), 1000, new lambertian(vec3(0.5, 0.5, 0.5)));
+    std::vector< hitable*> list;
+    list.push_back(new sphere(vec3(0, -1000, 0), 1000, new lambertian(vec3(0.5, 0.5, 0.5))));
     int i = 1;
     for (int a = -11; a < 11; a++) {
         for (int b = -11; b < 11; b++) {
@@ -61,34 +61,54 @@ hitable *random_scene() {
             vec3 center(a+0.9*random_double(),0.2,b+0.9*random_double());
             if ((center-vec3(4,0.2,0)).length() > 0.9) {
                 if (choose_mat < 0.8) {  // diffuse
-                    list[i++] = new sphere(
+                    list.push_back(new sphere(
                         center, 0.2,
                         new lambertian(vec3(random_double()*random_double(),
                                             random_double()*random_double(),
                                             random_double()*random_double()))
-                    );
+                    ));
                 }
                 else if (choose_mat < 0.95) { // metal
-                    list[i++] = new sphere(
+                    list.push_back(new sphere(
                         center, 0.2,
                         new metal(vec3(0.5*(1 + random_double()),
                                        0.5*(1 + random_double()),
                                        0.5*(1 + random_double())),
                                   0.5*random_double())
-                    );
+                    ));
                 }
                 else {  // glass
-                    list[i++] = new sphere(center, 0.2, new dielectric(1.5));
+                    list.push_back(new sphere(center, 0.2, new dielectric(1.5)));
                 }
             }
         }
     }
 
-    list[i++] = new sphere(vec3(0, 1, 0), 1.0, new dielectric(1.5));
-    list[i++] = new sphere(vec3(-4, 1, 0), 1.0, new lambertian(vec3(0.4, 0.2, 0.1)));
-    list[i++] = new sphere(vec3(4, 1, 0), 1.0, new metal(vec3(0.7, 0.6, 0.5), 0.0));
+    //list.push_back(new sphere(vec3(0, 1, 0), 1.0, new dielectric(1.5)));
+    //list.push_back(new sphere(vec3(-4, 1, 0), 1.0, new lambertian(vec3(0.4, 0.2, 0.1))));
+    //list.push_back(new sphere(vec3(4, 1, 0), 1.0, new metal(vec3(0.7, 0.6, 0.5), 0.0)));
+    const char* modelName = getConfig()->modelName.c_str();
+    Model tower = LoadModel(modelName);
+    for (int i = 0; i < tower.meshCount; ++i)
+    {
+        auto mesh = tower.meshes[i];        
+        for (int v = 0; v < mesh.vertexCount; )
+        {
+            vec3 p1(mesh.vertices[v * 3], mesh.vertices[v * 3 + 1], mesh.vertices[v * 3 + 2]);
+            v++;
+            vec3 p2(mesh.vertices[v * 3], mesh.vertices[v * 3 + 1], mesh.vertices[v * 3 + 2]);
+            v++;
+            vec3 p3(mesh.vertices[v * 3], mesh.vertices[v * 3 + 1], mesh.vertices[v * 3 + 2]);
+            v++;
+            p1 *= 10;
+            p2 *= 10;
+            p3 *= 10;
+            list.push_back(new Triangle(p1, p2, p3, new lambertian(vec3(0.4, 0.2, 0.1))));
+        }
 
-    return new hitable_list(list,i);
+    }
+
+    return new hitable_list(list, list.size());
 }
 
 void initializeScripts()
@@ -101,15 +121,21 @@ void initializeScripts()
 
 
 int main() {
+    const int screenWidth = 1200;
+    const int screenHeight = 800;
+    InitWindow(screenWidth, screenHeight, "Simple Engine");
+
+    SetTargetFPS(60);
+
     initializeScripts();
-    const int nx = 1200;
-    const int ny = 800;
-    const int ns = 50;
+    const int nx = screenWidth;
+    const int ny = screenHeight;
+    const int ns = getConfig()->sampleCount;
     
     hitable *world = random_scene();
 
-    vec3 lookfrom(13,2,3);
-    vec3 lookat(0,0,0);
+    vec3 lookfrom(9,4,3);
+    vec3 lookat(0,1,0);
     float dist_to_focus = 10.0f;
     float aperture = 0.1f;
 
@@ -119,24 +145,36 @@ int main() {
     data.resize(nx * ny * 3);
 
     std::packaged_task task([&]() {
-        concurrency::parallel_for(0, ny, 1, [&](int j) {
-            for (int i = 0; i < nx; i++) {
-                vec3 col(0, 0, 0);
-                for (int s = 0; s < ns; s++) {
-                    float u = float(i + random_double()) / float(nx);
-                    float v = float(j + random_double()) / float(ny);
-                    ray r = cam.get_ray(u, v);
-                    col += color(r, world, 0);
+        concurrency::parallel_for(0, 12 * 8, 1, [&](int d) {
+            int xTile = d % 12;
+            int yTile = d / 12;
+
+            int nxStart = xTile * 100;
+            int nxEnd = nxStart + 100;
+
+            int nyStart = yTile * 100;
+            int nyEnd = nyStart + 100;
+
+            for (int j = nyStart; j < nyEnd; j++)
+            {
+                for (int i = nxStart; i < nxEnd; i++) {
+                    vec3 col(0, 0, 0);
+                    for (int s = 0; s < ns; s++) {
+                        float u = float(i + random_double()) / float(nx);
+                        float v = float(j + random_double()) / float(ny);
+                        ray r = cam.get_ray(u, v);
+                        col += color(r, world, 0);
+                    }
+                    col /= float(ns);
+                    col = vec3(sqrt(col[0]), sqrt(col[1]), sqrt(col[2]));
+                    int ir = int(255.99 * col[0]);
+                    int ig = int(255.99 * col[1]);
+                    int ib = int(255.99 * col[2]);
+                    int pixelIndex = (i + (ny - j - 1) * nx) * 3;
+                    data[pixelIndex] = ir;
+                    data[pixelIndex + 1] = ig;
+                    data[pixelIndex + 2] = ib;
                 }
-                col /= float(ns);
-                col = vec3(sqrt(col[0]), sqrt(col[1]), sqrt(col[2]));
-                int ir = int(255.99 * col[0]);
-                int ig = int(255.99 * col[1]);
-                int ib = int(255.99 * col[2]);
-                int pixelIndex = (i + (ny - j - 1) * nx) * 3;
-                data[pixelIndex] = ir;
-                data[pixelIndex + 1] = ig;
-                data[pixelIndex + 2] = ib;
             }
             });
         });
@@ -145,12 +183,9 @@ int main() {
 
     std::thread task_td(std::move(task));
 
-    const int screenWidth = 1200;
-    const int screenHeight = 800;
 
-    InitWindow(screenWidth, screenHeight, "Simple Engine");
 
-    SetTargetFPS(60);         
+  
     Image img;
     img.width = 1200;
     img.height = 800;

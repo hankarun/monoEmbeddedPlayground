@@ -26,6 +26,8 @@ set(SOURCE_FILES
     random.h
     ray.h
     sphere.h
+    triangle.h
+    triangle.cpp
     vec3.h
 )
 add_executable(engine ${SOURCE_FILES})

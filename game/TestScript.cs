@@ -1,6 +1,16 @@
 using Simengine;
 using System;
 
+public class MenuItem : Attribute
+{
+    public string Name;
+    public MenuItem(string name)
+    {
+        Name = name;
+    }
+}
+
+[MenuItem("test")]
 public class TestScript : BaseScript
 {
     public void OnUpdate()

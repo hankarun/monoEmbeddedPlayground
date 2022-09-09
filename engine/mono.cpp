@@ -131,12 +131,27 @@ bool initialize(const char* monoDir)
 		if (name == "<Module>")
 			continue;
 
+		if (name == "MenuItem")
+			continue;
+
 		auto object = mono_object_new(domain, monoClass);
 		if (!object) {
 			mono_image_close(image);
 			printf("Failed to create class instance");
 			return false;
 		}
+
+		auto attributes = mono_custom_attrs_from_class(monoClass);
+		if (attributes)
+		{
+			auto method = attributes->attrs[0].ctor;
+			auto methodClass = mono_method_get_class(method);
+			auto methodObj = mono_method_get_object(domain, method, methodClass);
+			printf("Attr name %s", mono_class_get_name(methodClass));
+			auto nameProp = mono_class_get_property_from_name(methodClass, "Name");
+			auto propValue = mono_property_get_value(nameProp, methodObj, NULL, NULL);
+		}
+
 
 		mono_runtime_object_init(object);
 
@@ -151,5 +166,5 @@ bool initialize(const char* monoDir)
 		if (method_start)
 			mono_runtime_invoke(method_start, object, NULL, NULL);
 	}
-
+	printf("a");
 }

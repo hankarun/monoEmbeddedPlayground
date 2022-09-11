@@ -141,15 +141,29 @@ bool initialize(const char* monoDir)
 			return false;
 		}
 
+
 		auto attributes = mono_custom_attrs_from_class(monoClass);
 		if (attributes)
 		{
 			auto method = attributes->attrs[0].ctor;
+			printf("Method Name %s\n", mono_method_get_name(method));
 			auto methodClass = mono_method_get_class(method);
 			auto methodObj = mono_method_get_object(domain, method, methodClass);
-			printf("Attr name %s", mono_class_get_name(methodClass));
-			auto nameProp = mono_class_get_property_from_name(methodClass, "Name");
-			auto propValue = mono_property_get_value(nameProp, methodObj, NULL, NULL);
+			printf("Attr class name %s\n", mono_class_get_name(methodClass));
+			
+			void* it = nullptr;
+			auto prop = mono_class_get_fields(methodClass, &it);
+			while (prop)
+			{
+				printf("Attribute field %s\n", mono_field_get_name(prop));
+				prop = mono_class_get_fields(methodClass, &it);
+			}
+
+			auto nameProp = mono_class_get_field_from_name(methodClass, "Name");
+			if (nameProp)
+			{
+				printf("test\n");
+			}
 		}
 
 

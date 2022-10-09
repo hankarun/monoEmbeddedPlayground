@@ -17,7 +17,7 @@
 #include "material.h"
 #include "random.h"
 #include "triangle.h"
-
+#include "Path.h"
 #include "raylib.h"
 
 #include <vector>
@@ -111,12 +111,15 @@ hitable *random_scene() {
     return new hitable_list(list, list.size());
 }
 
+
+
 void initializeScripts()
 {
     if (!initialize("../../data/"))
     {
         printf("Error mono can not initialized");
     }
+    loadAssambly(Path::fromWorkingDir("..\\game\\Debug\\Game.dll"));
 }
 
 

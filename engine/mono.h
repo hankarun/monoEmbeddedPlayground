@@ -1,4 +1,5 @@
 #include <string>
+#include "Path.h"
 
 struct Config
 {
@@ -7,4 +8,5 @@ struct Config
 };
 
 Config* getConfig();
-bool initialize(const char*);
+bool initialize(const Path& directory);
+bool loadAssambly(const Path& filename);

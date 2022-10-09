@@ -84,13 +84,13 @@ Config* getConfig()
 	return &config;
 }
 
-bool initialize(const char* monoDir)
+bool initialize(const Path& monoDirPath)
 {
-	const std::string dir_mono_lib = std::string(monoDir) + "\\" + std::string("mono\\lib");
-	const std::string dir_mono_etc = std::string(monoDir) + "\\" + std::string("mono\\etc");
+	const Path dir_mono_lib = monoDirPath.append("mono/lib");
+	const Path dir_mono_etc = monoDirPath.append("mono/etc");
 
 	// Point mono to the libs and configuration files
-	mono_set_dirs(dir_mono_lib.c_str(), dir_mono_etc.c_str());
+	mono_set_dirs(dir_mono_lib.toString().c_str(), dir_mono_etc.toString().c_str());
 	// Initialise a domain
 	domain = mono_jit_init_version("Simengine", "v4.0.30319");
 	if (!domain) {
@@ -107,9 +107,11 @@ bool initialize(const char* monoDir)
 	mono_thread_set_main(mono_thread_current());
 
 	RegisterCallbacks();
+}
 
-	const char* filename = "C:\\Users\\hankarun\\Desktop\\monoEmbeddedPlayground\\build\\game\\Debug\\Game.dll";
-	MonoAssembly* assembly = mono_domain_assembly_open(domain, filename);
+bool loadAssambly(const Path& filenamePath)
+{
+	MonoAssembly* assembly = mono_domain_assembly_open(domain, filenamePath.toString().c_str());
 	if (assembly == nullptr)
 	{
 		return false;
@@ -141,30 +143,18 @@ bool initialize(const char* monoDir)
 			return false;
 		}
 
-
 		auto attributes = mono_custom_attrs_from_class(monoClass);
 		if (attributes)
-		{
-			auto method = attributes->attrs[0].ctor;
-			printf("Method Name %s\n", mono_method_get_name(method));
-			auto methodClass = mono_method_get_class(method);
-			auto methodObj = mono_method_get_object(domain, method, methodClass);
-			printf("Attr class name %s\n", mono_class_get_name(methodClass));
-			
-			void* it = nullptr;
-			auto prop = mono_class_get_fields(methodClass, &it);
-			while (prop)
-			{
-				printf("Attribute field %s\n", mono_field_get_name(prop));
-				prop = mono_class_get_fields(methodClass, &it);
-			}
+		{	
+			auto attrClass = mono_method_get_class(attributes->attrs[0].ctor);
+			auto attrObj = mono_custom_attrs_get_attr(attributes, attrClass);
+			auto nameProp = mono_class_get_field_from_name(attrClass, "Name");
+			MonoString* strval;
+			mono_field_get_value(attrObj, nameProp, &strval);
 
-			auto nameProp = mono_class_get_field_from_name(methodClass, "Name");
-			if (nameProp)
-			{
-				printf("test\n");
-			}
+			printf("%s", mono_string_to_utf8(strval));
 		}
+		
 
 
 		mono_runtime_object_init(object);
@@ -180,5 +170,5 @@ bool initialize(const char* monoDir)
 		if (method_start)
 			mono_runtime_invoke(method_start, object, NULL, NULL);
 	}
-	printf("a");
+	return true;
 }

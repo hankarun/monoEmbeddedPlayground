@@ -25,6 +25,7 @@
 #include <thread>
 #include <future>
 #include <functional>
+#include <assert.h>
 
 //#define STB_IMAGE_WRITE_IMPLEMENTATION
 //#include "stb_image_write.h"
@@ -111,7 +112,8 @@ hitable *random_scene() {
     return new hitable_list(list, list.size());
 }
 
-
+ScriptAssembly* coreAssembly;
+ScriptAssembly* appAssembly;
 
 void initializeScripts()
 {
@@ -119,7 +121,15 @@ void initializeScripts()
     {
         printf("Error mono can not initialized");
     }
-    loadAssambly(Path::fromWorkingDir("..\\game\\Debug\\Game.dll"));
+
+    coreAssembly = new ScriptAssembly();
+    appAssembly = new ScriptAssembly();
+
+    loadAssembly(coreAssembly, Path::fromWorkingDir("..\\game\\Debug\\EngineApi.dll"));
+    loadAssembly(appAssembly, Path::fromWorkingDir("..\\game\\Debug\\Game.dll"));
+    loadClasses(coreAssembly, appAssembly);
+
+    assert(false);
 }
 
 

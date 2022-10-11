@@ -1,19 +1,10 @@
 #include "mono.h"
 
-#include <mono/jit/jit.h>
-#include <mono/metadata/appdomain.h>
-#include <mono/metadata/assembly.h>
-#include <mono/metadata/debug-helpers.h>
-#include <mono/metadata/environment.h>
-#include <mono/metadata/exception.h>
-#include <mono/metadata/loader.h>
-#include <mono/metadata/mono-config.h>
-#include <mono/metadata/mono-debug.h>
-#include <mono/metadata/mono-gc.h>
-#include <mono/metadata/threads.h>
+
 
 #include <string>
 #include <vector>
+#include <iostream>
 
 MonoDomain* domain;
 
@@ -107,57 +98,139 @@ bool initialize(const Path& monoDirPath)
 	mono_thread_set_main(mono_thread_current());
 
 	RegisterCallbacks();
+	return true;
 }
 
-bool loadAssambly(const Path& filenamePath)
+ScriptFieldType MonoTypeToScriptFieldType(MonoType* monoType)
 {
-	MonoAssembly* assembly = mono_domain_assembly_open(domain, filenamePath.toString().c_str());
-	if (assembly == nullptr)
+	std::string typeName = mono_type_get_name(monoType);
+
+	auto it = s_ScriptFieldTypeMap.find(typeName);
+	if (it == s_ScriptFieldTypeMap.end())
+	{
+		return ScriptFieldType::None;
+	}
+
+	return it->second;
+}
+
+struct FieldDef
+{
+	std::string name;
+	ScriptFieldType fieldType;
+	uint32_t flags;
+};
+
+FieldDef loadFieldDef(MonoClassField* field)
+{
+	FieldDef def;
+	def.name = mono_field_get_name(field);
+	def.flags = mono_field_get_flags(field);
+	def.fieldType = MonoTypeToScriptFieldType(mono_field_get_type(field));
+	return def;
+}
+
+
+std::ostream& operator<<(std::ostream& s, const FieldDef& item)
+{
+	s << "Field Name: " << item.name << " type: " << (int)item.fieldType;
+	s << " Flags: ";
+	if (item.flags & FIELD_ATTRIBUTE_PUBLIC)
+		s << "Public, ";
+	if (item.flags & FIELD_ATTRIBUTE_PRIVATE)
+		s << "Private, ";
+	if (item.flags & FIELD_ATTRIBUTE_STATIC)
+		s << "Static ";
+	return s;
+}
+
+
+
+bool loadAssembly(ScriptAssembly* _assembly, const Path& path)
+{
+	_assembly->assembly = mono_domain_assembly_open(domain, path.toString().c_str());
+	if (_assembly->assembly == nullptr)
 	{
 		return false;
 	}
 
-	MonoImage* image = mono_assembly_get_image(assembly);
-	if (!image) {
+	_assembly->image = mono_assembly_get_image(_assembly->assembly);
+	if (!_assembly->image) {
 		printf("Failed to get image");
 		return false;
 	}
+	return true;
+}
 
-	auto classes = GetAssemblyClassList(image);
-
+void loadClasses(ScriptAssembly* coreAsssembly, ScriptAssembly* assembly)
+{
+	MonoClass* baseScriptClass = mono_class_from_name(coreAsssembly->image, "Simengine", "BaseScript");
+	auto classes = GetAssemblyClassList(assembly->image);
 	for (auto& monoClass : classes)
 	{
-		std::string name = mono_class_get_name(monoClass);
-		printf("Class Name %s\n", name.c_str());
-
-		if (name == "<Module>")
-			continue;
-
-		if (name == "MenuItem")
+		bool isBaseScript = mono_class_is_subclass_of(monoClass, baseScriptClass, false);
+		if (!isBaseScript)
 			continue;
 
 		auto object = mono_object_new(domain, monoClass);
 		if (!object) {
-			mono_image_close(image);
+			mono_image_close(assembly->image);
 			printf("Failed to create class instance");
-			return false;
 		}
 
 		auto attributes = mono_custom_attrs_from_class(monoClass);
 		if (attributes)
-		{	
-			auto attrClass = mono_method_get_class(attributes->attrs[0].ctor);
-			auto attrObj = mono_custom_attrs_get_attr(attributes, attrClass);
-			auto nameProp = mono_class_get_field_from_name(attrClass, "Name");
-			MonoString* strval;
-			mono_field_get_value(attrObj, nameProp, &strval);
+		{
+			for (int i = 0; i < attributes->num_attrs; ++i)
+			{
+				auto attrClass = mono_method_get_class(attributes->attrs[i].ctor);
+				const char* attrClassName = mono_class_get_name(attrClass);
+				printf("Attribute class name: %s\n", attrClassName);
+				if (strcmp(attrClassName, "MenuItem") == 0)
+				{
+					auto attrObj = mono_custom_attrs_get_attr(attributes, attrClass);
+					auto nameProp = mono_class_get_field_from_name(attrClass, "Name");
+					MonoString* strval;
+					mono_field_get_value(attrObj, nameProp, &strval);
 
-			printf("%s", mono_string_to_utf8(strval));
+					printf("Menuu Attribute: %s\n", mono_string_to_utf8(strval));
+				}
+				if (strcmp(attrClassName, "EditorItem") == 0)
+				{
+					auto attrObj = mono_custom_attrs_get_attr(attributes, attrClass);
+					auto nameProp = mono_class_get_field_from_name(attrClass, "editorName");
+					MonoString* strval;
+					mono_field_get_value(attrObj, nameProp, &strval);
+
+					printf("EditorItem: %s\n", mono_string_to_utf8(strval));
+				}
+			}
+
 		}
-		
-
 
 		mono_runtime_object_init(object);
+
+
+		void* propIt = nullptr;
+		auto property = mono_class_get_properties(monoClass, &propIt);
+		while (property)
+		{
+			printf("Property : %s\n", mono_property_get_name(property));
+			printf("Type : \n");
+			printf("Access : \n");
+			property = mono_class_get_properties(monoClass, &propIt);
+		}
+
+
+		void* filedIt = nullptr;
+		auto field = mono_class_get_fields(monoClass, &filedIt);
+		while (field)
+		{
+			FieldDef def = loadFieldDef(field);
+			std::cout << def << std::endl;
+			field = mono_class_get_fields(monoClass, &filedIt);
+		}
+
 
 		void* iter = nullptr;
 		MonoMethod* method;
@@ -170,5 +243,4 @@ bool loadAssambly(const Path& filenamePath)
 		if (method_start)
 			mono_runtime_invoke(method_start, object, NULL, NULL);
 	}
-	return true;
 }

@@ -17,18 +17,8 @@ set_target_properties(libmono PROPERTIES
 
 set(SOURCE_FILES 
     main.cc 
-    camera.h
-    hitable.h
-    hitable_list.h
-    material.h
     mono.cpp
     mono.h
-    random.h
-    ray.h
-    sphere.h
-    triangle.h
-    triangle.cpp
-    vec3.h
 )
 add_executable(engine ${SOURCE_FILES})
 target_link_libraries(engine libmono Winmm Bcrypt version ws2_32 raylib)

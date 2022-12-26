@@ -25,18 +25,17 @@ public class EditorItem : Attribute
 [EditorItem("Editor")]
 public class TestScript : BaseScript
 {
+    public Prefab prefab;
+    public Texture texture;
+    public Entity ownship;
     public int iteration = 0;
     public float speed = 1.0f;
     static int staticField = 12;
     private string testData = "testData";
+
     public void OnUpdate()
     {
         Debug.Log(21.0f);
         Console.WriteLine("On Update - test");
-        _ = new Config
-        {
-            modelName = "C:\\Users\\hankarun\\Desktop\\monoEmbeddedPlayground\\engine\\models\\bunny.obj",
-            sampleCount = 50
-        };
     }
 }

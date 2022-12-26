@@ -10,21 +10,9 @@ MonoDomain* domain;
 
 static void Debug_LogFloat(float delta_time) { printf("%f\n", delta_time); }
 
-Config config;
-
-static void Set_Model_Name(MonoString* str) {
-	config.modelName = mono_string_to_utf8(str);
-}
-
-static void SetSampleCount(int i) {
-	config.sampleCount = i;
-}
-
 static void RegisterCallbacks()
 {
 	mono_add_internal_call("Simengine.Debug::Log", Debug_LogFloat);
-	mono_add_internal_call("Simengine.Config::SetModelName", Set_Model_Name);
-	mono_add_internal_call("Simengine.Config::SetSampleCount", SetSampleCount);
 }
 
 std::vector<MonoClass*> GetAssemblyClassList(MonoImage* image)
@@ -68,11 +56,6 @@ MonoMethod* get_method(MonoImage* image, const std::string& method)
 	}
 
 	return mono_method;
-}
-
-Config* getConfig()
-{
-	return &config;
 }
 
 bool initialize(const Path& monoDirPath)

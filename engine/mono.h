@@ -15,12 +15,6 @@
 #include <mono/metadata/threads.h>
 #include <mono/metadata/tabledefs.h>
 
-struct Config
-{
-	std::string modelName;
-	int sampleCount = 1;
-};
-
 enum class ScriptFieldType
 {
 	None = 0,
@@ -28,7 +22,7 @@ enum class ScriptFieldType
 	Bool, Char, Byte, Short, Int, Long,
 	UByte, UShort, UInt, ULong,
 	Vector2, Vector3, Vector4,
-	Entity
+	Entity, Prefab, Texture
 };
 
 static std::unordered_map<std::string, ScriptFieldType> s_ScriptFieldTypeMap =
@@ -50,9 +44,10 @@ static std::unordered_map<std::string, ScriptFieldType> s_ScriptFieldTypeMap =
 	{ "Simengine.Vector4", ScriptFieldType::Vector4 },
 
 	{ "Simengine.Entity", ScriptFieldType::Entity },
+	{ "Simengine.Prefab", ScriptFieldType::Prefab },
+	{ "Simengine.Texture", ScriptFieldType::Texture }
 };
 
-Config* getConfig();
 bool initialize(const Path& directory);
 struct ScriptAssembly
 {

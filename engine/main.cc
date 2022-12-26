@@ -63,5 +63,15 @@ int main() {
     loadAssembly(appAssembly, Path::fromWorkingDir("..\\game\\Debug\\Game.dll"));
     loadClasses(coreAssembly, appAssembly);
 
+    // Load project dll
+    // Get class list
+
+    // Load scene
+    // Create script from name
+        // Load script properties
+
+    // Save scene
+        // Save script properties
+
     return 0;
 }
